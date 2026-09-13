@@ -1,0 +1,10 @@
+.vs/
+.visualgdb/
+**/VisualGDB/Debug/
+*.user
+*.o
+*.dep
+*.rsp
+*.elf
+*.bin
+
