@@ -16,7 +16,7 @@ void buffer_append_int16(uint8_t* buffer, int16_t number, int16_t* index) {
 	buffer[(*index)++] = number;
 }
 
-DMMOTOR& DMMOTOR::State_Decode(CAN hcan, uint8_t idata[][8])//接收反馈数据
+DMMOTOR& DMMOTOR::State_Decode(CAN& hcan, uint8_t idata[][8])//接收反馈数据
 {
 	//浮点型数据
 	//receive_data[0]=电机id
@@ -30,18 +30,19 @@ DMMOTOR& DMMOTOR::State_Decode(CAN hcan, uint8_t idata[][8])//接收反馈数据
 	tmp_value = (idata[id][5]) | ((idata[id][4] & 0x0f) << 8);
 	current = uint_to_float(tmp_value, C_MIN, C_MAX, 12);
 	torque = current * KT;//（力矩=电流*转矩常数，本产品转矩常数为 1.4Nm/A）
+	return *this;
 }
 
 
-void DMMOTOR::DMmotor_transmit(uint32_t id)
+void DMMOTOR::DMmotor_transmit()
 {
 	//CanComm_ControlCmd(can1, CMD_RESET_MODE, id + MOTOR_MODE);//电机失力
-	can2.Transmit(id + MOTOR_MODE, can2.jointpdata[id - 1], 8);
+	can1.Transmit(ID + MOTOR_MODE, can1.jointpdata[ID - DM_ID1], 8);
 }
 
 void DMMOTOR::DMmotorinit()
 {
-	CanComm_ControlCmd(can2, CMD_MOTOR_MODE, MOTOR_MODE + 1);
+	CanComm_ControlCmd(can1, CMD_MOTOR_MODE, ID);
 	delay.delay_ms(1);
 }
 
@@ -65,7 +66,7 @@ float DMMOTOR::GetTorque()
 	return torque;
 }
 
-void  DMMOTOR::CanComm_ControlCmd(CAN hcan, uint8_t cmd, uint32_t id)//使能帧
+void  DMMOTOR::CanComm_ControlCmd(CAN& hcan, uint8_t cmd, uint32_t id)//使能帧
 {
 	uint8_t buf[8] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00 };
 	switch (cmd)
@@ -106,7 +107,7 @@ int DMMOTOR::float_to_uint(float x, float x_min, float x_max, int bits)
 	return (int)((x - offset) * ((float)((1 << bits) - 1)) / span);
 }
 
-void DMMOTOR::DMmotor_Ontimer(CAN hcan, float f_kp, float f_kd, uint8_t* odata)
+void DMMOTOR::DMmotor_Ontimer(CAN& hcan, float f_kp, float f_kd, uint8_t* odata)
 {
 	unsigned char* P = (unsigned char*)&setPos; // 定义一个无符号字符型指针p并指向f的地址
 	unsigned char* V = (unsigned char*)&setSpeed; // 定义一个无符号字符型指针p并指向f的地址

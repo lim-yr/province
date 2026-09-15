@@ -59,8 +59,8 @@ void CONTROL::CHASSIS::Update()
 	if (!ctrl.chassis_motor[0] || !ctrl.chassis_motor[1] ||
 		!ctrl.chassis_motor[2] || !ctrl.chassis_motor[3]) return;
 	const int32_t wheel[CHASSIS_MOTOR_NUM] = {
-		speedx + speedy + speedz, -speedx + speedy + speedz,
-		-speedx - speedy + speedz, speedx - speedy + speedz
+		-speedx + speedy + speedz, speedx + speedy + speedz,
+		speedx - speedy + speedz, -speedx - speedy + speedz
 	};
 	int32_t peak = 0;
 	for (int i = 0; i < CHASSIS_MOTOR_NUM; ++i)

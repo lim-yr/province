@@ -42,8 +42,11 @@ Motor can2_motor[CAN2_MOTOR_NUM] = {
 	Motor(M6020,POS,pantile, ID7, PID(40.f, 0.0f, 1.5f,0.f),PID(0.8f, 0.005f, 15.0f,0.f)),
 	Motor(M6020,SPD,chassis, ID8, PID(10.f, 0.0f, 1.5f,0.f))
 };
-DMMOTOR DMmotor[1] = {
+DMMOTOR DMmotor[4] = {
 	DMMOTOR(0x01, P_S, L_F),
+	DMMOTOR(0x02, P_S, L_B),
+	DMMOTOR(0x03, P_S, R_B),
+	DMMOTOR(0x04, P_S, R_F)
 };
 
 

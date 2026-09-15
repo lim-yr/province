@@ -135,9 +135,12 @@ void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* hcan)
 {
 	CAN& bus = hcan == &can1.hcan ? can1 : can2;
 	const uint32_t id = hcan->pRxMsg->StdId;
-	if (hcan == &can2.hcan && id == 1)
+	if (hcan == &can1.hcan && hcan->pRxMsg->IDE == CAN_ID_STD &&
+		hcan->pRxMsg->DLC == 8 && id <= 4)
 	{
-		memcpy(can2.jointidata, hcan->pRxMsg->Data, 8);
+		const uint8_t motor_id = hcan->pRxMsg->Data[0] & 0x0F;
+		if (motor_id >= 1 && motor_id <= 4)
+			memcpy(can1.jointidata[motor_id - 1], hcan->pRxMsg->Data, 8);
 	}
 	else if (hcan->pRxMsg->IDE == CAN_ID_STD && hcan->pRxMsg->DLC == 8 &&
 		id >= 0x201 && id <= 0x20C)

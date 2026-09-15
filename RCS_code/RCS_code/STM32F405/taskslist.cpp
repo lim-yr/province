@@ -83,9 +83,14 @@ void MotorUpdateTask(void* pvParameters)
 
 		for (auto& motor : can2_motor)motor.Ontimer(can2.data, can2.temp_data);
 
-		DMmotor[0].State_Decode(can2, can2.jointidata)
-			.DMmotor_Ontimer(can2, DMmotor[0].Kp, DMmotor[0].Kd, can2.jointpdata[0]);
-
+		DMmotor[0].State_Decode(can1, can1.jointidata)
+			.DMmotor_Ontimer(can1, DMmotor[0].Kp, DMmotor[0].Kd, can1.jointpdata[0]);
+		DMmotor[1].State_Decode(can1, can1.jointidata)
+			.DMmotor_Ontimer(can1, DMmotor[1].Kp, DMmotor[1].Kd, can1.jointpdata[1]);
+		DMmotor[2].State_Decode(can1, can1.jointidata)
+			.DMmotor_Ontimer(can1, DMmotor[2].Kp, DMmotor[2].Kd, can1.jointpdata[2]);
+		DMmotor[3].State_Decode(can1, can1.jointidata)
+			.DMmotor_Ontimer(can1, DMmotor[3].Kp, DMmotor[3].Kd, can1.jointpdata[3]);
 
 	vTaskDelayUntil(&xlastWakeTime, pdMS_TO_TICKS(2));//开始执行该任务之后1ms再执行该任务
 }
@@ -101,7 +106,7 @@ void CanTransimtTask(void* pvParameters)
 		switch ((timer.counter++) % 3)
 		{
 		case 0:
-				DMmotor[0].DMmotor_transmit(1);
+				for (auto& motor : DMmotor) motor.DMmotor_transmit();
 			break;
 		case 1:
 			can1.Transmit(0x1ff, can1.temp_data + 8);
@@ -149,7 +154,7 @@ void ArmTask(void* pvParameters)
 	while (true)
 	{
 		//初始化达妙电机
-		DMmotor[0].DMmotorinit();
+		for (auto& motor : DMmotor) motor.DMmotorinit();
 		power.Send();
 		vTaskDelay(100);
 	}
