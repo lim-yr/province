@@ -21,9 +21,8 @@ void CAN::Init(CAN_TypeDef* instance)
 	hcan.Init.RFLM = DISABLE;				//禁止报文溢出锁定
 	hcan.Init.TXFP = DISABLE;				//传输优先级，EANBLE:ID优先 DISABLE:报文优先
 	HAL_CAN_Init(&hcan);					//调用HAL库初始化函数
-	HAL_CAN_Transmit_IT(&hcan);				//开启CAN通信发送中断
+	InitFilter(); // Configure filters and message buffers before receiving
 	HAL_CAN_Receive_IT(&hcan, CAN_FIFO0);	//开启CAN通信接收中断
-	InitFilter();
 }
 
 /*
@@ -134,18 +133,19 @@ HAL_StatusTypeDef CAN::Transmit(const uint32_t ID, const uint8_t* const pData, c
 */
 void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* hcan)
 {
-	if (hcan == &can1.hcan)
-		memcpy(can1.data[hcan->pRxMsg->StdId - 0x201], hcan->pRxMsg->Data, sizeof(uint8_t) * 8);
-	else
+	CAN& bus = hcan == &can1.hcan ? can1 : can2;
+	const uint32_t id = hcan->pRxMsg->StdId;
+	if (hcan == &can2.hcan && id == 1)
 	{
-		if (hcan->pRxMsg->StdId == 1)
-		{
-			memcpy(can2.jointidata, hcan->pRxMsg->Data, sizeof(uint8_t) * 8);
-		}
-		else
-		{
-			memcpy(can2.data[hcan->pRxMsg->StdId - 0x201], hcan->pRxMsg->Data, sizeof(uint8_t) * 8);
-		}
+		memcpy(can2.jointidata, hcan->pRxMsg->Data, 8);
+	}
+	else if (hcan->pRxMsg->IDE == CAN_ID_STD && hcan->pRxMsg->DLC == 8 &&
+		id >= 0x201 && id <= 0x20C)
+	{
+		const uint32_t slot = id - 0x201;
+		memcpy(bus.data[slot], hcan->pRxMsg->Data, 8);
+		bus.rx_tick[slot] = HAL_GetTick();
+		bus.rx_seen[slot] = true;
 	}
 
 	//can2.pd_Rx = xQueueSendFromISR((QueueHandle_t)Can2QueueHadle, hcan->pRxMsg->Data, NULL);

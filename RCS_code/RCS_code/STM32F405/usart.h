@@ -17,7 +17,8 @@ extern "C" {
 	class UART
 	{
 	public:
-		UART& Init(USART_TypeDef* Instance, uint32_t BaudRate);
+		UART& Init(USART_TypeDef* Instance, uint32_t BaudRate,
+			uint32_t WordLength = UART_WORDLENGTH_8B, uint32_t Parity = UART_PARITY_NONE);
 		UART& DMATxInit(void);
 		UART& DMARxInit(const uint8_t* buffer = nullptr, const uint32_t size = UART_MAX_LEN);
 
@@ -50,7 +51,8 @@ extern "C" {
 		QueueHandle_t UartQueueHandler = xQueueCreate(1, UART_MAX_LEN);
 		bool updateFlag = false;
 		BaseType_t pd_Rx = false;
-		uint32_t dataDmaNum{};
+		volatile uint32_t dataDmaNum{}; // Last IDLE frame length
+		volatile uint32_t idleCount{}; // Number of UART IDLE events
 		uint8_t m_uartrx[UART_MAX_LEN];
 	private:
 		UART_HandleTypeDef huart;

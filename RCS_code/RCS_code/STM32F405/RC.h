@@ -1,5 +1,5 @@
 #pragma once
-#include "usart.h."
+#include "usart.h"
 #include "FreeRTOS.h"
 #include <cmath>
 #include <cinttypes>
@@ -7,14 +7,9 @@
 #define RC_STATE(s0, s1) ( ((s0) << 8) | (s1) )
 
 /*
-×ó²¦Âës[0],ÓÒ²¦Âës[1]
-ÉÏ£º1 ÖÐ£º3 ÏÂ£º2
-
-ÓÒÒ¡¸Ë ÉÏÏÂ ch[1]
-ÓÒÒ¡¸Ë ×óÓÒ ch[0]
-×óÒ¡¸Ë ×óÓÒ ch[2]
-×óÒ¡¸Ë ÉÏÏÂ ch[3]
-
+Switches: s[0] left, s[1] right; up=1, down=2, middle=3.
+DBUS channels: ch[0] right stick horizontal, ch[1] right stick vertical,
+ch[2] left stick horizontal, ch[3] left stick vertical.
 */
 
 class RC
@@ -43,6 +38,8 @@ public:
 	uint8_t* GetDMARx(void) { return m_frame; }
 
 	bool judement_start = false;
+	uint32_t valid_frame_count{}; // Watch in debugger
+	uint32_t invalid_frame_count{};
 	void Decode();
 	void OnRC();
 	void OnPC();
@@ -57,6 +54,8 @@ private:
 	BaseType_t pd_Rx, pd_Tx;
 	UART* m_uart;
 	uint8_t m_frame[UART_MAX_LEN]{};
+	bool received_frame = false;
+	TickType_t last_frame_tick = 0;
 };
 
 extern RC rc;

@@ -4,7 +4,9 @@
 
 void RC::Init(UART* huart, USART_TypeDef* Instance, const uint32_t BaudRate)
 {
-	huart->Init(Instance, BaudRate).DMARxInit(nullptr);
+	// DR16 DBUS: 100 kbit/s, 8 data bits + even parity, 1 stop bit.
+	huart->Init(Instance, BaudRate, UART_WORDLENGTH_9B, UART_PARITY_EVEN)
+		.DMARxInit(nullptr);
 	m_uart = huart;
 	queueHandler = &huart->UartQueueHandler;
 }
@@ -73,77 +75,25 @@ void RC::RC_CheckState() {
 		break;
 
 	default:
+		ctrl.mode = CONTROL::STOP;
 		break;
 	}
 
 }
 
-void RC::RC_Control() {
-	if (ctrl.mode != CONTROL::RESET)
+void RC::RC_Control()
+{
+	ctrl.chassis.speedx = 0;
+	ctrl.chassis.speedy = 0;
+	ctrl.chassis.speedz = 0;
+	const bool online = received_frame &&
+		(xTaskGetTickCount() - last_frame_tick <= pdMS_TO_TICKS(100));
+	// Left switch middle, right switch up: left stick translates; right ch[0] rotates.
+	if (online && ctrl.mode == CONTROL::FOLLOW)
 	{
-
-		/*ctrl.chassis.speedx = rc.ch[3] * 4000.f / 660.f;
-		ctrl.chassis.speedy = -1 * rc.ch[2] * 4000.f / 660.f;
-		ctrl.chassis.speedz = 0;*/
-
-		//ctrl.chassis.Keep_Direction();
-
-		switch (ctrl.mode)
-		{
-		case CONTROL::ROTATION:
-
-			break;
-
-		case CONTROL::FOLLOW:
-
-			break;
-
-		case CONTROL::SEPARATE:
-
-			break;
-
-		case CONTROL::AUTOAIM:
-
-			break;
-
-		case CONTROL::FIRE:
-	
-			break;
-
-		case CONTROL::STOP:
-
-			break;
-
-		case CONTROL::SPINNING:
-
-			break;
-
-		default:
-			ctrl.chassis.speedx = 0;
-			ctrl.chassis.speedy = 0;
-			ctrl.chassis.speedz = 0;
-			break;
-		}
-	}
-	else {
-		can1_motor[0].setspeed = 0;
-		can1_motor[1].setspeed = 0;
-		can1_motor[2].setspeed = 0;
-		can1_motor[3].setspeed = 0;
-		can1_motor[4].setspeed = 0;
-		can1_motor[5].setspeed = 0;
-		can1_motor[6].setspeed = 0;
-		can1_motor[7].setspeed = 0;
-		can2_motor[0].setspeed = 0;
-		can2_motor[1].setspeed = 0;
-		can2_motor[2].setspeed = 0;
-		can2_motor[3].setspeed = 0;
-		can2_motor[4].setspeed = 0;
-		can2_motor[5].setspeed = 0;
-		can2_motor[6].setspeed = 0;
-		DMmotor[0].setSpeed = 0;
-		DMmotor[1].setSpeed = 0;
-		DMmotor[2].setSpeed = 0;
+		ctrl.chassis.speedx = CONTROL::Setrange(rc.ch[3], 660) * para.max_speed / 660;
+		ctrl.chassis.speedy = CONTROL::Setrange(rc.ch[2], 660) * para.max_speed / 660;
+		ctrl.chassis.speedz = CONTROL::Setrange(rc.ch[0], 660) * para.rota_speed / 660;
 	}
 }
 
@@ -155,9 +105,11 @@ void RC::Decode()
 	else {
 		pd_Rx = xQueueReceive(*queueHandler, m_frame, NULL);
 	}
+	if (pd_Rx != pdTRUE) return;
 
-	if (sizeof(m_frame) < 18) return;
-	if ((m_frame[0] | m_frame[1] | m_frame[2] | m_frame[3] | m_frame[4] | m_frame[5]) == 0)return;
+	if (m_uart->dataDmaNum != 18) { ++invalid_frame_count; return; }
+	if ((m_frame[0] | m_frame[1] | m_frame[2] | m_frame[3] | m_frame[4] | m_frame[5]) == 0)
+	{ ++invalid_frame_count; return; }
 
 	rc.ch[0] = ((m_frame[0] | m_frame[1] << 8) & 0x07FF) - 1024;
 	rc.ch[1] = ((m_frame[1] >> 3 | m_frame[2] << 5) & 0x07FF) - 1024;
@@ -173,6 +125,11 @@ void RC::Decode()
 
 	rc.s[0] = ((m_frame[5] >> 4) & 0x0C) >> 2;
 	rc.s[1] = ((m_frame[5] >> 4) & 0x03);
+	if (rc.s[0] < UP || rc.s[0] > MID || rc.s[1] < UP || rc.s[1] > MID)
+	{ ++invalid_frame_count; return; }
+	++valid_frame_count;
+	received_frame = true;
+	last_frame_tick = xTaskGetTickCount();
 
 	pc.x = m_frame[6] | (m_frame[7] << 8);
 	pc.y = m_frame[8] | (m_frame[9] << 8);

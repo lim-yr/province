@@ -23,13 +23,14 @@
 #include "label.h"
 #include "queue.h"
 
-UART& UART::Init(USART_TypeDef* Instance, const uint32_t BaudRate)
+UART& UART::Init(USART_TypeDef* Instance, const uint32_t BaudRate,
+	const uint32_t WordLength, const uint32_t Parity)
 {
 	huart.Instance = Instance;								//设置串口通道
 	huart.Init.BaudRate = BaudRate;							//设置波特率
-	huart.Init.WordLength = UART_WORDLENGTH_8B;				//传输数据字长，8位
+	huart.Init.WordLength = WordLength;				//传输数据字长，8位
 	huart.Init.StopBits = UART_STOPBITS_1;					//停止位字长，1位
-	huart.Init.Parity = UART_PARITY_NONE;					//无奇偶效验位
+	huart.Init.Parity = Parity;					//无奇偶效验位
 	huart.Init.Mode = UART_MODE_TX_RX;						//收发模式
 	huart.Init.HwFlowCtl = UART_HWCONTROL_NONE;				//无硬件流
 	huart.Init.OverSampling = UART_OVERSAMPLING_16;			//16倍过采样，去除干扰
@@ -455,8 +456,10 @@ void UART::OnUARTITHandler(void)
 	{
 		__HAL_UART_CLEAR_IDLEFLAG(&huart);
 		__HAL_DMA_DISABLE(huart.hdmarx);
-
-		pd_Rx = xQueueOverwriteFromISR((QueueHandle_t)UartQueueHandler, m_uartrx, NULL);
+		dataDmaNum = UART_MAX_LEN - __HAL_DMA_GET_COUNTER(huart.hdmarx);
+		++idleCount;
+		if (dataDmaNum > 0 && UartQueueHandler != NULL)
+			pd_Rx = xQueueOverwriteFromISR(UartQueueHandler, m_uartrx, NULL);
 
 		DMAClearAllFlags(huart.hdmarx);
 

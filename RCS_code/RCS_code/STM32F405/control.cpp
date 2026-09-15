@@ -11,24 +11,28 @@ void CONTROL::Init(std::vector<Motor*> motor)
 		switch (motor[i]->function)
 		{
 		case(function_type::chassis):
-			chassis_motor[num1++] = motor[i];
+			if (num1 < CHASSIS_MOTOR_NUM) chassis_motor[num1++] = motor[i];
 			break;
 		case(function_type::pantile):
-			pantile_motor[num2++] = motor[i];
+			if (num2 < PANTILE_MOTOR_NUM) pantile_motor[num2++] = motor[i];
 			break;
 		case(function_type::shooter):
-			shooter_motor[num3++] = motor[i];
+			if (num3 < SHOOTER_MOTOR_NUM) shooter_motor[num3++] = motor[i];
 			break;
 		case(function_type::supply):
-			supply_motor[num4]->spinning = false;
-			supply_motor[num4]->need_curcircle = false;
-			supply_motor[num4++] = motor[i];
+			if (num4 < SUPPLY_MOTOR_NUM)
+			{
+				motor[i]->spinning = false;
+				motor[i]->need_curcircle = false;
+				supply_motor[num4++] = motor[i];
+			}
+			break;
 		default:
 			break;
 		}
 	}
-	pantile_motor[PANTILE::TYPE::PITCH]->setangle = para.initial_pitch;
-	pantile_motor[PANTILE::TYPE::YAW]->setangle = para.initial_yaw;
+	if (pantile_motor[PANTILE::TYPE::PITCH]) pantile_motor[PANTILE::TYPE::PITCH]->setangle = para.initial_pitch;
+	if (pantile_motor[PANTILE::TYPE::YAW]) pantile_motor[PANTILE::TYPE::YAW]->setangle = para.initial_yaw;
 }
 
 
@@ -50,7 +54,21 @@ void CONTROL::CHASSIS::Keep_Direction()
 
 void CONTROL::CHASSIS::Update()
 {
-
+	// Wheel order: left front (5), right front (6), right rear (7), left rear (8).
+	// Positive wheel speed is assumed to move the car forward.
+	if (!ctrl.chassis_motor[0] || !ctrl.chassis_motor[1] ||
+		!ctrl.chassis_motor[2] || !ctrl.chassis_motor[3]) return;
+	const int32_t wheel[CHASSIS_MOTOR_NUM] = {
+		speedx + speedy + speedz, -speedx + speedy + speedz,
+		-speedx - speedy + speedz, speedx - speedy + speedz
+	};
+	int32_t peak = 0;
+	for (int i = 0; i < CHASSIS_MOTOR_NUM; ++i)
+		peak = std::max(peak, std::abs(wheel[i]));
+	const int32_t limit = std::min<int32_t>(para.max_speed, ctrl.chassis_motor[0]->maxspeed);
+	for (int i = 0; i < CHASSIS_MOTOR_NUM; ++i)
+		ctrl.chassis_motor[i]->setspeed = peak > limit && limit > 0
+			? wheel[i] * limit / peak : wheel[i];
 }
 
 void CONTROL::PANTILE::Update()

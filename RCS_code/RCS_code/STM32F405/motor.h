@@ -11,7 +11,8 @@
 constexpr auto MAXSPEED = 5000;
 //constexpr auto ADJUSTSPEED = 3000;
 
-enum { ID1 = 0x205, ID2, ID3, ID4, ID5, ID6, ID7, ID8 };
+// DJI feedback IDs 0x201..0x208; motors 5..8 use command frame 0x1FF.
+enum { ID1 = 0x201, ID2, ID3, ID4, ID5, ID6, ID7, ID8 };
 enum { pre = 0, now };
 enum pid_mode { speed = 0, position, speed2 };
 enum motor_type { M3508, M3510, M2310, EC60, M6623, M6020, M2006 };
@@ -57,7 +58,7 @@ public:
 	int32_t mode{};
 	int round_count;
 	bool pd = 0, spinning = 0;//pd:单次拨弹 spinning:一秒八发
-	PID pid[2];
+	PID pid[3];
 	float Torque_constant_2006 = (0.18*10)/10000;
 	float setangle{}, angle[2]{},distance{}, initial_x{}, rota_angle{}, reset_rota_angle{}, delta_angle{};
 	float Torque_left;

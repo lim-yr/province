@@ -26,14 +26,13 @@
 #include "led.h"
 #include "HTmotor.h"
 #include "Power_read.h"
+#include "xuc.h"
 
 Motor can1_motor[CAN1_MOTOR_NUM] = {
-	Motor(M3508,SPD,chassis, ID1, PID(10.f, 0.0f, 1.5f,0.f)),
-	Motor(M2006,SPD,chassis, ID2, PID(10.f, 0.0f, 1.5f,0.f)),
-	Motor(M6020,POS,pantile, ID3, PID(40.f, 0.0f, 1.5f,0.f),PID(0.8f, 0.005f, 15.0f,0.f)),
-	Motor(M6020,POS,pantile, ID4, PID(40.f, 0.0f, 1.5f,0.f),PID(0.8f, 0.005f, 15.0f,0.f)),
-	Motor(M6020,POS,pantile, ID6, PID(40.f, 0.0f, 1.5f,0.f),PID(0.8f, 0.005f, 15.0f,0.f)),
-	Motor(M6020,SPD,chassis, ID8, PID(10.f, 0.0f, 1.5f,0.f))
+	Motor(M3508, SPD, chassis, ID5, PID(10.f, 0.f, 1.5f)), 
+	Motor(M3508, SPD, chassis, ID6, PID(10.f, 0.f, 1.5f)), 
+	Motor(M3508, SPD, chassis, ID7, PID(10.f, 0.f, 1.5f)), 
+	Motor(M3508, SPD, chassis, ID8, PID(10.f, 0.f, 1.5f))  
 };
 Motor can2_motor[CAN2_MOTOR_NUM] = {
 	Motor(M3508,SPD,chassis, ID1, PID(10.f, 0.0f, 1.5f,0.f)),
@@ -55,6 +54,7 @@ IMU imu_pantile;
 DELAY delay;
 RC rc;
 POWER power;
+XUC xuc;
 LED led1, led2, led3, led4;
 TASK task;
 CONTROL ctrl;
@@ -73,29 +73,17 @@ int main(void)
 	timer.Init(BASE, TIM3, 1000).BaseInit();
 
 	imu_pantile.Init(&uart1, USART1, 115200, CH010);
-	rc.Init(&uart2, USART2, 100000);
+	rc.Init(&uart4, UART4, 100000);
 	power.Init(&uart5,UART5,9600);
-	xuc, Init(&uart6, USART6, 115200);
+	xuc.Init(&uart6, USART6, 115200);
 
 	para.Init();
 
 	ctrl.Init(std::vector<Motor*>{
-		&can2_motor[0],
-			& can2_motor[1],
-			& can2_motor[2],
-			& can2_motor[3],
-			& can2_motor[4],
-			& can2_motor[5]
+		&can1_motor[0], &can1_motor[1],
+		&can1_motor[2], &can1_motor[3]
 	});
-	ctrl.Init(std::vector<Motor*>{
-		&can1_motor[0],
-			& can1_motor[1],
-			& can1_motor[2],
-			& can1_motor[3],
-			& can1_motor[4],
-			& can1_motor[5]
-	});
-
+	
 	task.Init();
 	for (;;)
 		;

@@ -41,6 +41,8 @@ public:
 	uint8_t data[12][8];//接收数据缓冲区，结合，motor.h中ontimer函数，12是防止3508和6020接收数据时存放位置冲突
 	uint8_t joint_data[6][6];
 	uint8_t temp_data[16];
+	volatile uint32_t rx_tick[12]{};
+	volatile bool rx_seen[12]{};
 	uint8_t jointpdata[6][8]{};
 	uint8_t jointidata[6][8];
 	CAN_HandleTypeDef hcan;
