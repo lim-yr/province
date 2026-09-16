@@ -81,19 +81,23 @@ void RC::RC_CheckState() {
 
 }
 
-void RC::RC_Control()
+void RC::RC_Control()//在此函数里面实现换算摇杆编码和底盘速度
 {
 	ctrl.chassis.speedx = 0;
 	ctrl.chassis.speedy = 0;
 	ctrl.chassis.speedz = 0;
-	const bool online = received_frame &&
-		(xTaskGetTickCount() - last_frame_tick <= pdMS_TO_TICKS(100));
+	const bool online = received_frame &&//启动通信检测是因为last_tick和tick_now初始均为0
+		(xTaskGetTickCount() - last_frame_tick <= pdMS_TO_TICKS(100));//拿计数器读到的现在的时刻和上一帧的读到的时刻相减,与100ms相比较
 	// Left switch middle, right switch up: left stick translates; right ch[0] rotates.
 	if (online && ctrl.mode == CONTROL::FOLLOW)
 	{
 		ctrl.chassis.speedx = CONTROL::Setrange(rc.ch[3], 660) * para.max_speed / 660;
 		ctrl.chassis.speedy = CONTROL::Setrange(rc.ch[2], 660) * para.max_speed / 660;
 		ctrl.chassis.speedz = CONTROL::Setrange(rc.ch[0], 660) * para.rota_speed / 660;
+	}
+	if (online && ctrl.mode == CONTROL::RESET)
+	{
+		;
 	}
 }
 
@@ -128,7 +132,7 @@ void RC::Decode()
 	if (rc.s[0] < UP || rc.s[0] > MID || rc.s[1] < UP || rc.s[1] > MID)
 	{ ++invalid_frame_count; return; }
 	++valid_frame_count;
-	received_frame = true;
+	received_frame = true;//遥控器对频成功自动接受数据帧后置1
 	last_frame_tick = xTaskGetTickCount();
 
 	pc.x = m_frame[6] | (m_frame[7] << 8);

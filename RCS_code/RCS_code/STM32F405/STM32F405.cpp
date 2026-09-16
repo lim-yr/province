@@ -35,13 +35,13 @@ Motor can1_motor[CAN1_MOTOR_NUM] = {
 	Motor(M3508, SPD, chassis, ID8, PID(10.f, 0.f, 1.5f))  
 };
 Motor can2_motor[CAN2_MOTOR_NUM] = {
-	Motor(M3508,SPD,chassis, ID1, PID(10.f, 0.0f, 1.5f,0.f)),
-	Motor(M2006,SPD,chassis, ID2, PID(10.f, 0.0f, 1.5f,0.f)),
-	Motor(M6020,POS,pantile, ID3, PID(40.f, 0.0f, 1.5f,0.f),PID(0.8f, 0.005f, 15.0f,0.f)),
-	Motor(M6020,POS,pantile, ID4, PID(40.f, 0.0f, 1.5f,0.f),PID(0.8f, 0.005f, 15.0f,0.f)),
-	Motor(M6020,POS,pantile, ID7, PID(40.f, 0.0f, 1.5f,0.f),PID(0.8f, 0.005f, 15.0f,0.f)),
-	Motor(M6020,SPD,chassis, ID8, PID(10.f, 0.0f, 1.5f,0.f))
-};
+	Motor(M6020,POS,pantile, ID6, PID(10.f, 0.0f, 1.5f,0.f),PID(0.8f, 0.005f, 15.0f,0.f)),
+	Motor(M3508,POS,pantile, ID4, PID(10.f, 0.0f, 1.5f,0.f)),
+	Motor(M3508,SPD,shooter, ID1, PID(40.f, 0.0f, 1.5f,0.f)),
+	Motor(M3508,SPD,shooter, ID2, PID(40.f, 0.0f, 1.5f,0.f)),
+	Motor(M3508,SPD,shooter, ID3, PID(40.f, 0.0f, 1.5f,0.f)),
+	Motor(M3508,POS,supply , ID5, PID(10.f, 0.0f, 1.5f,0.f),PID(0.8f, 0.005f, 15.0f,0.f))
+};   
 DMMOTOR DMmotor[4] = {
 	DMMOTOR(0x01, P_S, L_F),
 	DMMOTOR(0x02, P_S, L_B),
@@ -83,8 +83,16 @@ int main(void)
 	para.Init();
 
 	ctrl.Init(std::vector<Motor*>{
-		&can1_motor[0], &can1_motor[1],
-		&can1_motor[2], &can1_motor[3]
+		&can1_motor[0],
+		&can1_motor[1],
+		&can1_motor[2],
+		&can1_motor[3],
+		&can2_motor[0],
+		&can2_motor[1],
+		&can2_motor[2],
+		&can2_motor[3],
+		&can2_motor[4],
+		&can2_motor[5]
 	});
 	
 	task.Init();

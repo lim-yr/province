@@ -54,20 +54,20 @@ void CONTROL::CHASSIS::Keep_Direction()
 
 void CONTROL::CHASSIS::Update()
 {
-	// Wheel order: left front (5), right front (6), right rear (7), left rear (8).
+	// Wheel order: 左前(5), 右前(6), 右后(7), 左后(8).
 	// Positive wheel speed is assumed to move the car forward.
 	if (!ctrl.chassis_motor[0] || !ctrl.chassis_motor[1] ||
-		!ctrl.chassis_motor[2] || !ctrl.chassis_motor[3]) return;
+		!ctrl.chassis_motor[2] || !ctrl.chassis_motor[3]) return;//检测四个底盘电机是否全存在
 	const int32_t wheel[CHASSIS_MOTOR_NUM] = {
-		-speedx + speedy + speedz, speedx + speedy + speedz,
-		speedx - speedy + speedz, -speedx - speedy + speedz
-	};
+		speedx + speedy + speedz, -speedx + speedy + speedz,
+		-speedx - speedy + speedz, speedx - speedy + speedz
+	};//计算四个麦轮速度,麦轮解算必然导致四个轮子转速不同
 	int32_t peak = 0;
 	for (int i = 0; i < CHASSIS_MOTOR_NUM; ++i)
-		peak = std::max(peak, std::abs(wheel[i]));
-	const int32_t limit = std::min<int32_t>(para.max_speed, ctrl.chassis_motor[0]->maxspeed);
+		peak = std::max(peak, std::abs(wheel[i]));//peak为最快轮子的速度
+	const int32_t limit = std::min<int32_t>(para.max_speed, ctrl.chassis_motor[0]->maxspeed);//取小保证两个都不上限
 	for (int i = 0; i < CHASSIS_MOTOR_NUM; ++i)
-		ctrl.chassis_motor[i]->setspeed = peak > limit && limit > 0
+		ctrl.chassis_motor[i]->setspeed = peak > limit && limit > 0//速度在超限的时候转化为上限,在未超过时就是正常传输目标速度
 			? wheel[i] * limit / peak : wheel[i];
 }
 

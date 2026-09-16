@@ -131,12 +131,11 @@ void Motor::Ontimer(uint8_t idata[][8], uint8_t* odata)//idate: receive;odate: t
 	else if (mode == SPD)
 	{
 		// 3508 controller expects a signed current in the 0x1FF CAN frame.
-		CAN& bus = idata == can1.data ? can1 : can2;
+		CAN& bus = idata == can1.data ? can1 : can2;//从缓冲区反推出电机在哪条CAN线上
 		const bool feedback_recent = bus.rx_seen[trainsmit_or_receive_ID] &&
 			(HAL_GetTick() - bus.rx_tick[trainsmit_or_receive_ID] <= 100);
-		current = !feedback_recent || temperature > 70 ? 0 :
-			setrange(static_cast<int32_t>(
-				pid[speed].Position(static_cast<float>(setspeed - curspeed), maxcurrent)),
+		current = !feedback_recent || temperature > 70 
+			? 0 :setrange(static_cast<int32_t>(pid[speed].Position(static_cast<float>(setspeed - curspeed), maxcurrent)),
 				maxcurrent);
 		setcurrent = current;
 	}
