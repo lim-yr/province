@@ -126,7 +126,27 @@ void Motor::Ontimer(uint8_t idata[][8], uint8_t* odata)//idate: receive;odate: t
 	}
 	else if (mode == POS)
 	{
+		CAN& bus = idata == can1.data ? can1 : can2;
+		const bool feedback_recent = bus.rx_seen[trainsmit_or_receive_ID] &&
+			(HAL_GetTick() - bus.rx_tick[trainsmit_or_receive_ID] <= 100);
+		if (!feedback_recent || temperature > 70)
+		{
+			setspeed = 0;
+			current = 0;
+		}
+		else
+		{
+			if (!pos_inited)          // 收到第一帧有效反馈后，才对目标
+			{
+				setangle = angle[now]; // 上电对齐当前位置
+				pos_inited = true;
+			}
 
+			setspeed = pid[position].Position(static_cast<float>(setangle - angle[now]), maxspeed);
+			current = setrange(static_cast<int32_t>(pid[speed].Position(
+				static_cast<float>(setspeed - curspeed), maxcurrent)), maxcurrent);
+		}
+		setcurrent = current;
 	}
 	else if (mode == SPD)
 	{

@@ -2,6 +2,7 @@
 #include "tim.h"
 #include "judgement.h"
 #include "HTmotor.h"
+#include "RC.h"
 
 void CONTROL::Init(std::vector<Motor*> motor)
 {
@@ -38,7 +39,10 @@ void CONTROL::Init(std::vector<Motor*> motor)
 
 void CONTROL::Control_Pantile(int32_t ch_yaw, int32_t ch_pitch)
 {
-	
+	if (ctrl.pantile_motor[PANTILE::TYPE::PITCH]) {
+		pantile_motor[PANTILE::PITCH]->setangle += Setrange(ch_pitch, 660) * para.pitch_speed / 660;
+	}
+
 }
 
 void CONTROL::PANTILE::Keep_Pantile(float angleKeep, PANTILE::TYPE type,IMU frameOfReference)

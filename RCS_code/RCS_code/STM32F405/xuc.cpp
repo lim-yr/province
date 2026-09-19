@@ -4,6 +4,7 @@
 #include "CRC.h"
 #include "math.h"
 #include "RC.h"
+#include "control.h"
 
 void XUC::Init(UART* huart, USART_TypeDef* Instance, uint32_t BaudRate)
 {
@@ -19,7 +20,7 @@ void XUC::Init(UART* huart, USART_TypeDef* Instance, uint32_t BaudRate)
 	autoaim_controller[1].m_Td = 0.001f;
 }
 
-void XUC::Decode()
+void XUC::Decode()//接收并拆解视觉数据
 {
 	pd_Rx = xQueueReceive((m_uart->UartQueueHandler), m_frame, NULL);
 	if (m_frame[0] == 0xA5)
@@ -39,7 +40,7 @@ void XUC::Decode()
 	}
 }
 
-void XUC::Encode()
+void XUC::Encode()//将主控板上的数据编码,为了发给视觉
 {
 	own_color = judgement.data.robot_status_t.robot_id <= 7 ? RED : BLUE;
 	//TxPacket TxNuc;  // 创建一个数据包实例
@@ -54,6 +55,7 @@ void XUC::Encode()
 	TxNuc.aim_x = aim_x;
 	TxNuc.aim_y = aim_y;
 	TxNuc.aim_z = aim_z;
+	TxNuc.fire_mode = (ctrl.mode == CONTROL::FIRE);
 	TxNuc.checksum = 0;  // 初始化校验和为0
 
 	// 计算数据包的总大小
@@ -62,10 +64,11 @@ void XUC::Encode()
 	// 将数据包复制到发送缓冲区
 	memcpy(tx_data, &TxNuc, packet_size);
 
-	// 计算并附加 CRC16 校验和
+	//CRC16是一种检测数据传输错误的算法,可根据数据计算出16位校验值
+	//这里是计算CRC16
 	appendCRC16CheckSum(tx_data, packet_size);
 
-	// 发送数据
+	// 发送数据,包括数据＋CRC16校验值
 	m_uart->UARTTransmit(tx_data, packet_size);
 }
 
