@@ -218,7 +218,7 @@ void Motor::getmax(const type_t type)
 		break;
 	case M6020:
 		maxcurrent = 30000;
-		maxspeed = 200;
+		maxspeed = 600;
 		adjspeed = 80;
 		break;
 	case M2006:

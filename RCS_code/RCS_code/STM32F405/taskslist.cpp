@@ -112,6 +112,7 @@ void CanTransimtTask(void* pvParameters)
 		case 1:
 			can1.Transmit(0x1ff, can1.temp_data + 8);
 			can2.Transmit(0x1ff, can2.temp_data + 8);
+			can2.Transmit(0x2ff, can2.temp_data + 8);
 			break;
 		case 2:
 			can1.Transmit(0x200, can1.temp_data);

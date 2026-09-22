@@ -53,7 +53,11 @@ void CONTROL::Control_Pantile(int32_t ch_yaw, int32_t ch_pitch)
 	}
 
 	if (ctrl.pantile_motor[PANTILE::TYPE::YAW]) {
-		
+		Motor* const yaw_motor = ctrl.pantile_motor[PANTILE::TYPE::YAW];
+		const int32_t input = Setrange(static_cast<int16_t>(ch_yaw), 660);
+
+		// Yaw uses cascaded position-speed control. The stick changes the angle target.
+		yaw_motor->setangle += static_cast<float>(input) * para.yaw_speed / 660.f;
 	}
 
 

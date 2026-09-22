@@ -35,7 +35,7 @@ Motor can1_motor[CAN1_MOTOR_NUM] = {
 	Motor(M3508, SPD, chassis, ID8, PID(10.f, 0.f, 1.5f))  
 };
 Motor can2_motor[CAN2_MOTOR_NUM] = {
-	Motor(M6020,SPD,pantile, ID6, PID(10.f, 0.0f, 1.5f)),//昨天位置环写的不太好,Yaw和supply存在疯转,就全换成SPD了
+	Motor(M6020,POS,pantile, ID6, PID(40.f, 0.0f, 1.5f), PID(0.5f, 0.0f, 0.0f)),//yaw位置-速度级联控制
 	Motor(M3508,POS,pantile, ID4, PID(9.f, 0.0f, 0.0f),PID(0.5f, 0.0f, 0.0f)),//今早改了一下还没烧过
 	Motor(M3508,SPD,shooter, ID1, PID(40.f, 0.0f, 1.5f)),
 	Motor(M3508,SPD,shooter, ID2, PID(40.f, 0.0f, 1.5f)),
