@@ -3,6 +3,7 @@
 #include "judgement.h"
 #include "HTmotor.h"
 #include "RC.h"
+#include "imu.h"
 
 void CONTROL::Init(std::vector<Motor*> motor)
 {
@@ -39,9 +40,25 @@ void CONTROL::Init(std::vector<Motor*> motor)
 
 void CONTROL::Control_Pantile(int32_t ch_yaw, int32_t ch_pitch)
 {
-	if (ctrl.pantile_motor[PANTILE::TYPE::PITCH]) {
-		pantile_motor[PANTILE::PITCH]->setangle += Setrange(ch_pitch, 660) * para.pitch_speed / 660;
+	if (ctrl.pantile_motor[PANTILE::TYPE::PITCH]){
+		const int32_t input = Setrange(ch_pitch, 660);
+		if (input > 0) {
+			if(imu_pantile.GetAnglePitch() < para.imu_pitch_max)
+			ctrl.pantile_motor[PANTILE::TYPE::PITCH]->setangle += para.pitch_speed;
+		}
+		else if (input < 0) {
+			if (imu_pantile.GetAnglePitch() > para.imu_pitch_min)
+			ctrl.pantile_motor[PANTILE::TYPE::PITCH]->setangle -= para.pitch_speed;
+		}
 	}
+
+	if (ctrl.pantile_motor[PANTILE::TYPE::YAW]) {
+		
+	}
+
+
+
+
 
 }
 

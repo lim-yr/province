@@ -39,7 +39,7 @@ void RC::RC_CheckState() {
 	switch (RC_STATE(rc.s[0], rc.s[1]))
 	{
 	case RC_STATE(UP, UP):
-		ctrl.mode = CONTROL::SEPARATE;
+		ctrl.mode = CONTROL::SEPARATE;//进入底盘云台分离
 		break;
 
 	case RC_STATE(UP, MID):
