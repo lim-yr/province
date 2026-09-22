@@ -62,9 +62,9 @@ void RC::RC_CheckState() {
 		ctrl.mode = CONTROL::SEPARATE;
 		break;
 
-	case RC_STATE(DOWN, UP):
+	/*case RC_STATE(DOWN, UP):
 		ctrl.mode = CONTROL::FIRE;
-		break;
+		break;*/
 
 	case RC_STATE(DOWN, MID):
 		ctrl.mode = CONTROL::FIRE;
@@ -94,6 +94,9 @@ void RC::RC_Control()//在此函数里面实现换算摇杆编码和底盘速度
 		ctrl.chassis.speedx = CONTROL::Setrange(rc.ch[3], 660) * para.max_speed / 660;
 		ctrl.chassis.speedy = CONTROL::Setrange(rc.ch[2], 660) * para.max_speed / 660;
 		ctrl.chassis.speedz = CONTROL::Setrange(rc.ch[0], 660) * para.rota_speed / 660;
+	}
+	if (online && ctrl.mode == CONTROL::FIRE) {
+		ctrl.Control_Pantile(rc.ch[2], rc.ch[3]);
 	}
 	if (online && ctrl.mode == CONTROL::RESET)
 	{

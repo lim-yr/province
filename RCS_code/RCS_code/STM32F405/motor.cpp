@@ -126,18 +126,29 @@ void Motor::Ontimer(uint8_t idata[][8], uint8_t* odata)//idate: receive;odate: t
 	}
 	else if (mode == POS)
 	{
-
-	}
+		const float position_error = static_cast<float>(getdeltaa(static_cast<int16_t>(setangle - angle[now])));
+		setspeed = static_cast<int32_t>(pid[position].Position(position_error, maxspeed));
+		setspeed = setrange(setspeed, maxspeed);
+		const float speed_error = static_cast<float>(setspeed - curspeed);
+		setcurrent = static_cast<int32_t>(pid[speed].Position(speed_error, maxcurrent));
+		current = setrange(setcurrent, maxcurrent);
+ 	}
 	else if (mode == SPD)
 	{
 		// 3508 controller expects a signed current in the 0x1FF CAN frame.
 		CAN& bus = idata == can1.data ? can1 : can2;//从缓冲区反推出电机在哪条CAN线上
 		const bool feedback_recent = bus.rx_seen[trainsmit_or_receive_ID] &&
 			(HAL_GetTick() - bus.rx_tick[trainsmit_or_receive_ID] <= 100);
-		current = !feedback_recent || temperature > 70 
-			? 0 :setrange(static_cast<int32_t>(pid[speed].Position(static_cast<float>(setspeed - curspeed), maxcurrent)),
-				maxcurrent);
-		setcurrent = current;
+		if (!feedback_recent || temperature > 70)
+		{
+			setcurrent = 0;
+			current = 0;
+		}
+		else
+		{
+			setcurrent = static_cast<int32_t>(pid[speed].Position(static_cast<float>(setspeed - curspeed), maxcurrent));
+			current = setrange(setcurrent, maxcurrent);
+		}
 	}
 	recorded_the_Laps();
 	GetDistanceFromMechanicalAngle();

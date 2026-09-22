@@ -38,7 +38,23 @@ void CONTROL::Init(std::vector<Motor*> motor)
 
 void CONTROL::Control_Pantile(int32_t ch_yaw, int32_t ch_pitch)
 {
-	
+	Motor* yaw = ctrl.pantile_motor[PANTILE::TYPE::YAW];
+	Motor* pitch = ctrl.pantile_motor[PANTILE::TYPE::PITCH];
+	if (yaw == nullptr || pitch == nullptr)  return;
+	constexpr float encoder_round = 8192.f;
+	constexpr float control_period_s = 0.005f;
+
+	// para.yaw_speed: full-stick yaw speed in degrees per second.
+	const float yaw_input = std::max(-1.f, std::min(1.f, static_cast<float>(ch_yaw) / 660.f));
+	const float yaw_delta = yaw_input * para.yaw_speed * control_period_s *
+		encoder_round / 360.f;
+	const float pitch_delta = static_cast<float>(ch_pitch) * ctrl.pantile.sensitivity * encoder_round / 660.f;
+
+	yaw->setangle += yaw_delta;
+	while (yaw->setangle >= encoder_round) yaw->setangle -= encoder_round;
+	while (yaw->setangle < 0.f) yaw->setangle += encoder_round;
+	pitch->setangle += pitch_delta;
+	pitch->setangle = std::max(para.pitch_min, std::min(pitch->setangle, para.pitch_max));
 }
 
 void CONTROL::PANTILE::Keep_Pantile(float angleKeep, PANTILE::TYPE type,IMU frameOfReference)
@@ -61,7 +77,7 @@ void CONTROL::CHASSIS::Update()
 	const int32_t wheel[CHASSIS_MOTOR_NUM] = {
 		speedx + speedy + speedz, -speedx + speedy + speedz,
 		-speedx - speedy + speedz, speedx - speedy + speedz
-	};//计算四个麦轮速度,麦轮解算必然导致四个轮子转速不同
+	};//计算四个麦轮速度,麦轮解算必然导致四个轮子转速不�?
 	int32_t peak = 0;
 	for (int i = 0; i < CHASSIS_MOTOR_NUM; ++i)
 		peak = std::max(peak, std::abs(wheel[i]));//peak为最快轮子的速度
