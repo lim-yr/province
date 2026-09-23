@@ -35,6 +35,7 @@ public:
 		PID pantile_PID[3] = { {0.04f,0.f,0.f},{0.05f,0.f,0.f}, {0.f,0.f,0.f} };
 		const float sensitivity = 2.5f;
 		bool aim = false;
+		bool init = false;
 		void Keep_Pantile(float angleKeep, PANTILE::TYPE type, IMU frameOfReference);
 		void Update();
 	};

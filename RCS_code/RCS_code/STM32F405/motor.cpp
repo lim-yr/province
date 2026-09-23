@@ -2,6 +2,8 @@
 #include "gpio.h"
 #include "HTmotor.h"
 #include "imu.h"
+#include "control.h"
+
 #define DEG_TO_RAD 0.017453292f  // π / 180
 Motor::Motor(const motor_type type, const motor_mode mode, const function_type function, const uint32_t id, PID _speed, PID _position, PID _speed2)
 	: ID(id)
@@ -133,21 +135,35 @@ void Motor::Ontimer(uint8_t idata[][8], uint8_t* odata)//idate: receive;odate: t
 		{
 			setspeed = 0;
 		}
-		else
+		else if(this == ctrl.pantile_motor[CONTROL::PANTILE::TYPE::YAW])
 		{
-			if (!pos_inited)          // 收到第一帧有效反馈后，才对目标
+			if (!pos_inited1)          // 收到第一帧有效反馈后，才对目标
 			{
 				setangle = angle[now];
-				angle[pre] = angle[now];
-				sum_angle = angle[now];
-				pos_inited = true;
+				pos_inited1 = true;
 			}
-
-			setspeed = pid[position].Position(static_cast<float>(setangle - sum_angle), maxspeed);
-			current = setrange(static_cast<int32_t>(pid[speed].Position(
-				static_cast<float>(setspeed - curspeed), maxcurrent)), maxcurrent);
+			const float position_error = static_cast<float>(getdeltaa(static_cast<int16_t>(setangle - angle[now])));
+			setspeed = static_cast<int32_t>(pid[position].Position(position_error, maxspeed));
+			setspeed = setrange(setspeed, maxspeed);
+			const float speed_error = static_cast<float>(setspeed - curspeed);
+			setcurrent = static_cast<int32_t>(pid[speed].Position(speed_error, maxcurrent));
+			current = setrange(setcurrent, maxcurrent);
 		}
-		setcurrent = current;
+		else if (this == ctrl.pantile_motor[CONTROL::PANTILE::TYPE::PITCH])
+		{
+				if (!pos_inited2)          // 收到第一帧有效反馈后，才对目标
+				{
+					setangle = angle[now];
+					angle[pre] = angle[now];
+					sum_angle = angle[now];
+					pos_inited2 = true;
+				}
+
+				setspeed = pid[position].Position(static_cast<float>(setangle - sum_angle), maxspeed);
+				current = setrange(static_cast<int32_t>(pid[speed].Position(
+					static_cast<float>(setspeed - curspeed), maxcurrent)), maxcurrent);
+			}
+			setcurrent = current;
 	}
 	else if (mode == SPD)
 	{
@@ -199,8 +215,8 @@ void Motor::getmax(const type_t type)
 	switch (type)
 	{
 	case M3508:
-		maxcurrent = 10000;
-		maxspeed = 1000;
+		maxcurrent = 16384;
+		maxspeed = 3800;
 		break;
 	case M3510:
 		maxcurrent = 13000;
@@ -221,7 +237,7 @@ void Motor::getmax(const type_t type)
 		break;
 	case M6020:
 		maxcurrent = 30000;
-		maxspeed = 300;
+		maxspeed = 1000;
 		adjspeed = 80;
 		break;
 	case M2006:

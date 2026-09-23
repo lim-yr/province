@@ -40,33 +40,41 @@ void CONTROL::Init(std::vector<Motor*> motor)
 
 void CONTROL::Control_Pantile(int32_t ch_yaw, int32_t ch_pitch)
 {
-	if (ctrl.pantile_motor[PANTILE::TYPE::PITCH]){
-		const int32_t input = Setrange(ch_pitch, 660);
-		if (input > 0) {
-			if(imu_pantile.GetAnglePitch() < para.imu_pitch_max)
-			ctrl.pantile_motor[PANTILE::TYPE::PITCH]->setangle += para.pitch_speed;
-		}
-		else if (input < 0) {
+	Motor* yaw = ctrl.pantile_motor[PANTILE::TYPE::YAW];
+	Motor* pitch = ctrl.pantile_motor[PANTILE::TYPE::PITCH];
+	if (yaw) {
+		constexpr float encoder_round = 8192.f;
+		constexpr float control_period_s = 0.005f;
+
+		// para.yaw_speed: full-stick yaw speed in degrees per second.
+		const float yaw_input = std::max(-1.f, std::min(1.f, static_cast<float>(ch_yaw) / 660.f));
+		const float yaw_delta = yaw_input * para.yaw_speed * control_period_s *
+			encoder_round / 360.f;
+		const float pitch_delta = static_cast<float>(ch_pitch) * ctrl.pantile.sensitivity * encoder_round / 660.f;
+
+		yaw->setangle += yaw_delta;
+		while (yaw->setangle >= encoder_round) yaw->setangle -= encoder_round;
+		while (yaw->setangle < 0.f) yaw->setangle += encoder_round;
+	}
+	if (pitch) {
+		/*if (!pantile.init) {
 			if (imu_pantile.GetAnglePitch() > para.imu_pitch_min)
-			ctrl.pantile_motor[PANTILE::TYPE::PITCH]->setangle -= para.pitch_speed;
-		}
-	}
-
-	if (ctrl.pantile_motor[PANTILE::TYPE::YAW]) {
-		const int32_t input = Setrange(ch_yaw, 660);
+			pitch->setangle -= 10;
+			else 
+				pantile.init = true;
+		}*/
+		const float input = Setrange(ch_pitch, 660);
 		if (input > 0) {
-				ctrl.pantile_motor[PANTILE::TYPE::YAW]->setangle += para.yaw_speed;
+			if (imu_pantile.GetAnglePitch() < para.imu_pitch_max)
+				pitch->setangle += input / 660.f * para.pitch_speed;
 		}
-		else if (input < 0) {
-				ctrl.pantile_motor[PANTILE::TYPE::YAW]->setangle -= para.yaw_speed;
+		if (input < 0) {
+			if (imu_pantile.GetAnglePitch() > para.imu_pitch_min)
+				pitch->setangle += input / 660.f * para.pitch_speed;
 		}
 	}
-
-
-
-
-
 }
+
 
 void CONTROL::PANTILE::Keep_Pantile(float angleKeep, PANTILE::TYPE type,IMU frameOfReference)
 {
