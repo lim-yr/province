@@ -53,7 +53,13 @@ void CONTROL::Control_Pantile(int32_t ch_yaw, int32_t ch_pitch)
 	}
 
 	if (ctrl.pantile_motor[PANTILE::TYPE::YAW]) {
-		
+		const int32_t input = Setrange(ch_yaw, 660);
+		if (input > 0) {
+				ctrl.pantile_motor[PANTILE::TYPE::YAW]->setangle += para.yaw_speed;
+		}
+		else if (input < 0) {
+				ctrl.pantile_motor[PANTILE::TYPE::YAW]->setangle -= para.yaw_speed;
+		}
 	}
 
 

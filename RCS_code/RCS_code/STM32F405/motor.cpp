@@ -155,9 +155,12 @@ void Motor::Ontimer(uint8_t idata[][8], uint8_t* odata)//idate: receive;odate: t
 		CAN& bus = idata == can1.data ? can1 : can2;//从缓冲区反推出电机在哪条CAN线上
 		const bool feedback_recent = bus.rx_seen[trainsmit_or_receive_ID] &&//检测到电机是否成功通信,以及通信是否超时
 			(HAL_GetTick() - bus.rx_tick[trainsmit_or_receive_ID] <= 100);
-		current = !feedback_recent || temperature > 70 
-			? 0 :setrange(static_cast<int32_t>(pid[speed].Position(static_cast<float>(setspeed - curspeed), maxcurrent)),
-				maxcurrent);
+		if (!feedback_recent || temperature > 70)
+		{
+			setspeed = 0;
+		}
+		current = setrange(static_cast<int32_t>(pid[speed].Position(
+			static_cast<float>(setspeed - curspeed), maxcurrent)), maxcurrent);
 		setcurrent = current;
 	}
 	recorded_the_Laps();
@@ -218,7 +221,7 @@ void Motor::getmax(const type_t type)
 		break;
 	case M6020:
 		maxcurrent = 30000;
-		maxspeed = 200;
+		maxspeed = 300;
 		adjspeed = 80;
 		break;
 	case M2006:
