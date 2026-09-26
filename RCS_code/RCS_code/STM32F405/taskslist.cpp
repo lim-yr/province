@@ -132,6 +132,7 @@ void ControlTask(void* pvParameters)
 		rc.Update();
 		ctrl.chassis.Update();
 		ctrl.pantile.Update();
+		ctrl.shooter.Update();
 		//ctrl.shooter.Update();
 		vTaskDelay(5);
 	}

@@ -35,7 +35,7 @@ Motor can1_motor[CAN1_MOTOR_NUM] = {
 	Motor(M3508, SPD, chassis, ID8, PID(10.f, 0.f, 1.5f))  
 };
 Motor can2_motor[CAN2_MOTOR_NUM] = {
-	Motor(M6020,POS,pantile, ID6, PID(40.0f, 0.0f, 10.0f),PID(0.6f, 0.0f, 1.5f)),//Yaw的PID就得这么大
+	Motor(M6020,POS,pantile, ID6, PID(40.0f, 0.0f, 30.0f),PID(1.0f, 0.0f, 2.0f)),//Yaw的PID就得这么大
 	Motor(M3508,POS,pantile, ID4, PID(9.0f, 0.0f, 0.0f),PID(0.5f, 0.0f, 0.0f)),
 	Motor(M3508,SPD,shooter, ID1, PID(40.f, 0.0f, 1.5f)),
 	Motor(M3508,SPD,shooter, ID2, PID(40.f, 0.0f, 1.5f)),

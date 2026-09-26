@@ -101,6 +101,12 @@ void RC::RC_Control()//在此函数里面实现换算摇杆编码和底盘速度
 	}
 	if (online && ctrl.mode == CONTROL::SEPARATE)
 	{
+		ctrl.chassis.speedx = CONTROL::Setrange(rc.ch[3], 660) * para.max_speed / 660;
+		ctrl.chassis.speedy = CONTROL::Setrange(rc.ch[2], 660) * para.max_speed / 660;
+		ctrl.CONTROL::Control_Pantile(rc.ch[0], rc.ch[1]);
+	}
+	if (online && ctrl.mode == CONTROL::FIRE)
+	{
 		ctrl.CONTROL::Control_Pantile(rc.ch[0], rc.ch[1]);
 	}
 }
@@ -123,10 +129,10 @@ void RC::Decode()
 	rc.ch[1] = ((m_frame[1] >> 3 | m_frame[2] << 5) & 0x07FF) - 1024;
 	rc.ch[2] = ((m_frame[2] >> 6 | m_frame[3] << 2 | m_frame[4] << 10) & 0x07FF) - 1024;
 	rc.ch[3] = ((m_frame[4] >> 1 | m_frame[5] << 7) & 0x07FF) - 1024;
-	if (rc.ch[0] <= 25 && rc.ch[0] >= -25)rc.ch[0] = 0;
-	if (rc.ch[1] <= 25 && rc.ch[1] >= -25)rc.ch[1] = 0;
-	if (rc.ch[2] <= 25 && rc.ch[2] >= -25)rc.ch[2] = 0;
-	if (rc.ch[3] <= 25 && rc.ch[3] >= -25)rc.ch[3] = 0;
+	if (rc.ch[0] <= 35 && rc.ch[0] >= -35)rc.ch[0] = 0;
+	if (rc.ch[1] <= 35 && rc.ch[1] >= -35)rc.ch[1] = 0;
+	if (rc.ch[2] <= 35 && rc.ch[2] >= -35)rc.ch[2] = 0;
+	if (rc.ch[3] <= 35 && rc.ch[3] >= -35)rc.ch[3] = 0;
 
 	pre_rc.s[0] = rc.s[0];
 	pre_rc.s[1] = rc.s[1];

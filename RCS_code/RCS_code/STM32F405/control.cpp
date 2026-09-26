@@ -4,6 +4,7 @@
 #include "HTmotor.h"
 #include "RC.h"
 #include "imu.h"
+#include "motor.h"
 
 void CONTROL::Init(std::vector<Motor*> motor)
 {
@@ -57,12 +58,6 @@ void CONTROL::Control_Pantile(int32_t ch_yaw, int32_t ch_pitch)
 		while (yaw->setangle < 0.f) yaw->setangle += encoder_round;
 	}
 	if (pitch) {
-		/*if (!pantile.init) {
-			if (imu_pantile.GetAnglePitch() > para.imu_pitch_min)
-			pitch->setangle -= 10;
-			else 
-				pantile.init = true;
-		}*/
 		const float input = Setrange(ch_pitch, 660);
 		if (input > 0) {
 			if (imu_pantile.GetAnglePitch() < para.imu_pitch_max)
@@ -83,12 +78,25 @@ void CONTROL::PANTILE::Keep_Pantile(float angleKeep, PANTILE::TYPE type,IMU fram
 
 void CONTROL::CHASSIS::Keep_Direction()
 {
-
-
+	Motor* yaw = ctrl.pantile_motor[PANTILE::TYPE::YAW];
+	if (yaw == nullptr) // 没有yaw反馈时不能做底盘云台坐标变换
+	return;
+	const float command_x_gimbal = static_cast<float>(speedx); // 左摇杆前后指令，参考方向为云台朝向
+	const float command_y_gimbal = static_cast<float>(speedy); // 左摇杆左右指令，参考方向为云台朝向
+	const float gimbal_relative_chassis_deg = ctrl.GetDelta(
+		mechanicalToDegree(yaw->angle[now] - para.initial_yaw)); // 云台相对底盘的机械偏角
+	const float gimbal_to_chassis_rad = gimbal_relative_chassis_deg * PI / 180.f; // 编码器偏角本身就是云台坐标到车体坐标的转换角
+	const float cos_yaw = cosf(gimbal_to_chassis_rad);
+	const float sin_yaw = sinf(gimbal_to_chassis_rad);
+	const float command_x_chassis = command_x_gimbal * cos_yaw - command_y_gimbal * sin_yaw;
+	const float command_y_chassis = command_x_gimbal * sin_yaw + command_y_gimbal * cos_yaw;
+	speedx = static_cast<int32_t>(command_x_chassis); // 转换成底盘自身坐标系的前后速度
+	speedy = static_cast<int32_t>(command_y_chassis); // 转换成底盘自身坐标系的左右速度
 }
 
 void CONTROL::CHASSIS::Update()
 {
+	Keep_Direction();
 	// Wheel order: 左前(5), 右前(6), 右后(7), 左后(8).
 	// Positive wheel speed is assumed to move the car forward.
 	if (!ctrl.chassis_motor[0] || !ctrl.chassis_motor[1] ||
@@ -108,12 +116,34 @@ void CONTROL::CHASSIS::Update()
 
 void CONTROL::PANTILE::Update()
 {
-	
+	Motor* pitch = ctrl.pantile_motor[PANTILE::TYPE::PITCH];
+	if (!ctrl.pantile.init && imu_pantile.GetAnglePitch() != 0) {
+		if (imu_pantile.GetAnglePitch() > para.imu_pitch_min)
+			pitch->setangle -= para.pitch_speed;
+		else
+			ctrl.pantile.init = true;
+	}
 }
 
 void CONTROL::SHOOTER::Update()
 {
-	
+	ctrl.shooter.openRub = (ctrl.mode == CONTROL::FIRE);
+	const bool run = openRub;
+
+	if (ctrl.shooter_motor[0] != nullptr)
+	{
+		ctrl.shooter_motor[0]->setspeed = run ? -shoot_speed : 0;
+	}
+
+	if (ctrl.shooter_motor[1] != nullptr)
+	{
+		ctrl.shooter_motor[1]->setspeed = run ? shoot_speed : 0;
+	}
+
+	if (ctrl.shooter_motor[2] != nullptr)
+	{
+		ctrl.shooter_motor[2]->setspeed = run ? -shoot_speed : 0;
+	}
 }
 
 float CONTROL::CHASSIS::Ramp(float setval, float curval, uint32_t RampSlope)

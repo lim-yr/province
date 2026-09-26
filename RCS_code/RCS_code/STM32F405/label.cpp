@@ -5,7 +5,7 @@
 
 void PARAMETER::Init()
 {
-	pitch_min = 0, pitch_max = 8192, initial_pitch = 4096, initial_yaw = 4900;
+	pitch_min = 0, pitch_max = 8192, initial_pitch = 4096, initial_yaw = 2513;
 	imu_pitch_max = 19, imu_pitch_min = 4;
 	ace_speed = 1000, max_speed = 3000, rota_speed = 3000;
 	pitch_speed = 180, yaw_speed = 120;
