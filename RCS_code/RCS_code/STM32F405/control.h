@@ -35,6 +35,7 @@ public:
 		PID pantile_PID[3] = { {0.04f,0.f,0.f},{0.05f,0.f,0.f}, {0.f,0.f,0.f} };
 		const float sensitivity = 2.5f;
 		bool aim = false;
+		bool init = false;
 		void Keep_Pantile(float angleKeep, PANTILE::TYPE type, IMU frameOfReference);
 		void Update();
 	};
@@ -49,7 +50,7 @@ public:
 		bool fraction = false;
 		bool fullheat_shoot = false;
 		bool heat_ulimit = false;
-		int16_t shoot_speed = 6000;
+		int16_t shoot_speed = 3985;
 		void Update();
 	};
 

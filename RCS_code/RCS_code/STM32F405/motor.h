@@ -64,7 +64,8 @@ public:
 	float Torque_left;
 	float Torque_right;
 	float const_dx = 0.004974;// m / s  /rpm
-	bool pos_inited = false;
+	bool pos_inited1 = false;
+	bool pos_inited2 = false;
 };
 //此处要根据实际不同can线上的电机数量进行更改
 extern Motor can1_motor[CAN1_MOTOR_NUM];

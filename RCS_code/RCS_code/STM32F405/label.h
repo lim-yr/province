@@ -13,7 +13,7 @@
 
 #define CHASSIS_MOTOR_NUM 4
 #define PANTILE_MOTOR_NUM 2
-#define SHOOTER_MOTOR_NUM 2
+#define SHOOTER_MOTOR_NUM 3
 #define SUPPLY_MOTOR_NUM 1
 
 #define RcQueueHandle Uart2QueueHandler

@@ -4,6 +4,7 @@
 #include "HTmotor.h"
 #include "RC.h"
 #include "imu.h"
+#include "motor.h"
 
 void CONTROL::Init(std::vector<Motor*> motor)
 {
@@ -40,31 +41,35 @@ void CONTROL::Init(std::vector<Motor*> motor)
 
 void CONTROL::Control_Pantile(int32_t ch_yaw, int32_t ch_pitch)
 {
-	if (ctrl.pantile_motor[PANTILE::TYPE::PITCH]){
-		const int32_t input = Setrange(ch_pitch, 660);
+	Motor* yaw = ctrl.pantile_motor[PANTILE::TYPE::YAW];
+	Motor* pitch = ctrl.pantile_motor[PANTILE::TYPE::PITCH];
+	if (yaw) {
+		constexpr float encoder_round = 8192.f;
+		constexpr float control_period_s = 0.005f;
+
+		// para.yaw_speed: full-stick yaw speed in degrees per second.
+		const float yaw_input = std::max(-1.f, std::min(1.f, static_cast<float>(ch_yaw) / 660.f));
+		const float yaw_delta = yaw_input * para.yaw_speed * control_period_s *
+			encoder_round / 360.f;
+		const float pitch_delta = static_cast<float>(ch_pitch) * ctrl.pantile.sensitivity * encoder_round / 660.f;
+
+		yaw->setangle += yaw_delta;
+		while (yaw->setangle >= encoder_round) yaw->setangle -= encoder_round;
+		while (yaw->setangle < 0.f) yaw->setangle += encoder_round;
+	}
+	if (pitch) {
+		const float input = Setrange(ch_pitch, 660);
 		if (input > 0) {
-			if(imu_pantile.GetAnglePitch() < para.imu_pitch_max)
-			ctrl.pantile_motor[PANTILE::TYPE::PITCH]->setangle += para.pitch_speed;
+			if (imu_pantile.GetAnglePitch() < para.imu_pitch_max)
+				pitch->setangle += input / 660.f * para.pitch_speed;
 		}
-		else if (input < 0) {
+		if (input < 0) {
 			if (imu_pantile.GetAnglePitch() > para.imu_pitch_min)
-			ctrl.pantile_motor[PANTILE::TYPE::PITCH]->setangle -= para.pitch_speed;
+				pitch->setangle += input / 660.f * para.pitch_speed;
 		}
 	}
-
-	if (ctrl.pantile_motor[PANTILE::TYPE::YAW]) {
-		Motor* const yaw_motor = ctrl.pantile_motor[PANTILE::TYPE::YAW];
-		const int32_t input = Setrange(static_cast<int16_t>(ch_yaw), 660);
-
-		// Yaw uses cascaded position-speed control. The stick changes the angle target.
-		yaw_motor->setangle += static_cast<float>(input) * para.yaw_speed / 660.f;
-	}
-
-
-
-
-
 }
+
 
 void CONTROL::PANTILE::Keep_Pantile(float angleKeep, PANTILE::TYPE type,IMU frameOfReference)
 {
@@ -73,12 +78,25 @@ void CONTROL::PANTILE::Keep_Pantile(float angleKeep, PANTILE::TYPE type,IMU fram
 
 void CONTROL::CHASSIS::Keep_Direction()
 {
-
-
+	Motor* yaw = ctrl.pantile_motor[PANTILE::TYPE::YAW];
+	if (yaw == nullptr) // 没有yaw反馈时不能做底盘云台坐标变换
+	return;
+	const float command_x_gimbal = static_cast<float>(speedx); // 左摇杆前后指令，参考方向为云台朝向
+	const float command_y_gimbal = static_cast<float>(speedy); // 左摇杆左右指令，参考方向为云台朝向
+	const float gimbal_relative_chassis_deg = ctrl.GetDelta(
+		mechanicalToDegree(yaw->angle[now] - para.initial_yaw)); // 云台相对底盘的机械偏�?
+	const float gimbal_to_chassis_rad = gimbal_relative_chassis_deg * PI / 180.f; // 编码器偏角本身就是云台坐标到车体坐标的转换角
+	const float cos_yaw = cosf(gimbal_to_chassis_rad);
+	const float sin_yaw = sinf(gimbal_to_chassis_rad);
+	const float command_x_chassis = command_x_gimbal * cos_yaw - command_y_gimbal * sin_yaw;
+	const float command_y_chassis = command_x_gimbal * sin_yaw + command_y_gimbal * cos_yaw;
+	speedx = static_cast<int32_t>(command_x_chassis); // 转换成底盘自身坐标系的前后速度
+	speedy = static_cast<int32_t>(command_y_chassis); // 转换成底盘自身坐标系的左右速度
 }
 
 void CONTROL::CHASSIS::Update()
 {
+	Keep_Direction();
 	// Wheel order: 左前(5), 右前(6), 右后(7), 左后(8).
 	// Positive wheel speed is assumed to move the car forward.
 	if (!ctrl.chassis_motor[0] || !ctrl.chassis_motor[1] ||
@@ -86,7 +104,7 @@ void CONTROL::CHASSIS::Update()
 	const int32_t wheel[CHASSIS_MOTOR_NUM] = {
 		speedx + speedy + speedz, -speedx + speedy + speedz,
 		-speedx - speedy + speedz, speedx - speedy + speedz
-	};//计算四个麦轮速度,麦轮解算必然导致四个轮子转速不同
+	};//计算四个麦轮速度,麦轮解算必然导致四个轮子转速不�?
 	int32_t peak = 0;
 	for (int i = 0; i < CHASSIS_MOTOR_NUM; ++i)
 		peak = std::max(peak, std::abs(wheel[i]));//peak为最快轮子的速度
@@ -98,12 +116,43 @@ void CONTROL::CHASSIS::Update()
 
 void CONTROL::PANTILE::Update()
 {
-	
+	Motor* pitch = ctrl.pantile_motor[PANTILE::TYPE::PITCH];
+	if (!ctrl.pantile.init && imu_pantile.GetAnglePitch() != 0) {
+		if (imu_pantile.GetAnglePitch() > para.imu_pitch_min)
+			pitch->setangle -= para.pitch_speed;
+		else
+			ctrl.pantile.init = true;
+	}
 }
 
 void CONTROL::SHOOTER::Update()
 {
-	
+	ctrl.shooter.openRub = (ctrl.mode == CONTROL::FIRE);
+	const bool run = openRub;
+
+	if (ctrl.shooter_motor[0] != nullptr)
+	{
+		ctrl.shooter_motor[0]->setspeed = run ? -shoot_speed : 0;
+	}
+
+	if (ctrl.shooter_motor[1] != nullptr)
+	{
+		ctrl.shooter_motor[1]->setspeed = run ? shoot_speed : 0;
+	}
+
+	if (ctrl.shooter_motor[2] != nullptr)
+	{
+		ctrl.shooter_motor[2]->setspeed = run ? -shoot_speed : 0;
+	}
+	GPIO_Init(GPIOC, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN, GPIO_PIN_9);
+	if (rc.state)
+	{
+		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_SET);
+	}
+	else
+	{
+		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_RESET);
+	}
 }
 
 float CONTROL::CHASSIS::Ramp(float setval, float curval, uint32_t RampSlope)

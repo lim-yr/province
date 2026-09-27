@@ -38,6 +38,7 @@ public:
 	uint8_t* GetDMARx(void) { return m_frame; }
 
 	bool judement_start = false;
+	bool state = false;
 	uint32_t valid_frame_count{}; // Watch in debugger
 	uint32_t invalid_frame_count{};
 	void Decode();
