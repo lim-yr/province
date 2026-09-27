@@ -84,7 +84,7 @@ void CONTROL::CHASSIS::Keep_Direction()
 	const float command_x_gimbal = static_cast<float>(speedx); // 左摇杆前后指令，参考方向为云台朝向
 	const float command_y_gimbal = static_cast<float>(speedy); // 左摇杆左右指令，参考方向为云台朝向
 	const float gimbal_relative_chassis_deg = ctrl.GetDelta(
-		mechanicalToDegree(yaw->angle[now] - para.initial_yaw)); // 云台相对底盘的机械偏�?
+		mechanicalToDegree(yaw->angle[now] - para.initial_yaw)); // 云台相对底盘的机械偏角
 	const float gimbal_to_chassis_rad = gimbal_relative_chassis_deg * PI / 180.f; // 编码器偏角本身就是云台坐标到车体坐标的转换角
 	const float cos_yaw = cosf(gimbal_to_chassis_rad);
 	const float sin_yaw = sinf(gimbal_to_chassis_rad);
@@ -104,7 +104,7 @@ void CONTROL::CHASSIS::Update()
 	const int32_t wheel[CHASSIS_MOTOR_NUM] = {
 		speedx + speedy + speedz, -speedx + speedy + speedz,
 		-speedx - speedy + speedz, speedx - speedy + speedz
-	};//计算四个麦轮速度,麦轮解算必然导致四个轮子转速不�?
+	};//计算四个麦轮速度,麦轮解算必然导致四个轮子转速不同
 	int32_t peak = 0;
 	for (int i = 0; i < CHASSIS_MOTOR_NUM; ++i)
 		peak = std::max(peak, std::abs(wheel[i]));//peak为最快轮子的速度
