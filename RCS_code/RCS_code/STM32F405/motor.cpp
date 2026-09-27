@@ -78,8 +78,6 @@ void Motor::Ontimer(uint8_t idata[][8], uint8_t* odata)//idate: receive;odate: t
 	this->angle[now] = getword(idata[trainsmit_or_receive_ID][0], idata[trainsmit_or_receive_ID][1]);
 	this->temperature = idata[trainsmit_or_receive_ID][6];
 	//Get currrent speed
-
-	motor_status = 0;
 	if (temperature > 70) {
 		setspeed = 0;
 	}
@@ -100,31 +98,91 @@ void Motor::Ontimer(uint8_t idata[][8], uint8_t* odata)//idate: receive;odate: t
 	//20220121--hz
 	if (mode == ACE)
 	{
-
 		if (spinning)
 		{
-
+			supply_max_current_cycles = 0;
+			motor_status = 0;
+			need_curcircle = 0.f;
+			setspeed = adjspeed;
+			current = setrange(static_cast<int32_t>(pid[speed].Position(
+				static_cast<float>(setspeed - curspeed), maxcurrent)), maxcurrent);
 		}
 		else {
+			const int32_t actual_angle = sum_angle +
+				getdeltaa(static_cast<int16_t>(angle[now] - angle[pre]));
 			if (need_curcircle > 0)
 			{
-				
+				if (motor_status == 0)
+				{
+					motor_angle_status = actual_angle +
+						static_cast<int32_t>(std::lround(need_curcircle * 8192.f));
+					motor_status = 1;
+				}
 
 			}
 			else if (need_curcircle <= 0)
 			{
+				if (need_curcircle < 0.f && motor_status == 0)
+				{
+					motor_angle_status = actual_angle +
+						static_cast<int32_t>(std::lround(need_curcircle * 8192.f));
+					motor_status = 1;
+				}
+			}
 
+			if (motor_status == 1)
+			{
+				const int32_t error = motor_angle_status - actual_angle;
+				const int32_t abs_error = error >= 0 ? error : -error;
+
+				if (abs_error <= 100 && std::abs(curspeed) <= 80)
+				{
+					supply_max_current_cycles = 0;
+					need_curcircle = 0.f;
+					motor_status = 0;
+					setspeed = 0;
+					current = 0;
+				}
+				else
+				{
+				const int32_t speed_limit =
+					abs_error < 1500 ? 300 : para.ace_speed;
+
+				setspeed = setrange(static_cast<int32_t>(
+					pid[position].Position(
+						static_cast<float>(error), speed_limit)), speed_limit);
+
+				current = setrange(static_cast<int32_t>(
+					pid[speed].Position(
+						static_cast<float>(setspeed - curspeed), 3000)), 14000);
+				if (this == ctrl.supply_motor[0])
+				{
+					if (current >= 14000 || current <= -14000)
+					{
+						if (++supply_max_current_cycles > 2)
+						{
+							current = 0;
+							setspeed = 0;
+							need_curcircle = 0.f;
+							motor_status = 0;
+							supply_max_current_cycles = 0;
+						}
+					}
+					else
+					{
+						supply_max_current_cycles = 0;
+					}
+				}
+				}
+			}
+			else
+			{
+				supply_max_current_cycles = 0;
+				setspeed = 0;
+				current = 0;
 			}
 		}
-		if (setspeed == 0 && curspeed == 0)
-		{
-			motor_status = 1;
-			motor_angle_status = angle[0];
-		}
-		if (motor_status == 1 && fabs(motor_angle_status - angle[0]) < 50)
-		{
-			current = 0;
-		}
+		setcurrent = current;
 	}
 	else if (mode == POS)
 	{

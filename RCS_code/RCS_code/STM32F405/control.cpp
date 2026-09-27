@@ -145,6 +145,19 @@ void CONTROL::SHOOTER::Update()
 		ctrl.shooter_motor[2]->setspeed = run ? -shoot_speed : 0;
 	}
 	GPIO_Init(GPIOC, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN, GPIO_PIN_9);
+	static bool last_trigger = false;
+	const bool trigger = (ctrl.mode == CONTROL::FIRE) && abs(rc.rc.ch[2]) > 500;
+	Motor* feeder = ctrl.supply_motor[0];
+
+	if (trigger && !last_trigger && feeder != nullptr)
+	{
+		taskENTER_CRITICAL();
+		if (feeder->motor_status == 0 && feeder->need_curcircle == 0.f)
+			feeder->need_curcircle =
+			(rc.rc.ch[2] < 0) ? 2.4004f : -2.4004f;
+		taskEXIT_CRITICAL();
+	}
+	last_trigger = trigger;
 	if (rc.state)
 	{
 		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_SET);

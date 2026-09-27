@@ -44,9 +44,10 @@ private:
 	static int16_t getword(const uint8_t high, const uint8_t low);
 	static int32_t setrange(const int32_t original, const int32_t range);
 	type_t type;
+	uint8_t supply_max_current_cycles{};
 public:
 	function_type function;
-	uint16_t need_curcircle;
+	float need_curcircle;
 	static int16_t getdeltaa(int16_t diff);
 	uint8_t getStatus()const;
 	int32_t current{}, curspeed{}, setcurrent{},setspeed{}, torque_current, motor_status, motor_angle_status, sum_angle{};//这个current用于输出电流或者电压
