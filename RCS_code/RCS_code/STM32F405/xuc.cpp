@@ -23,6 +23,8 @@ void XUC::Init(UART* huart, USART_TypeDef* Instance, uint32_t BaudRate)
 void XUC::Decode()//接收并拆解视觉数据
 {
 	pd_Rx = xQueueReceive((m_uart->UartQueueHandler), m_frame, NULL);
+	if (pd_Rx != pdTRUE)
+		return;
 	if (m_frame[0] == 0xA5)
 	{
 
@@ -36,6 +38,8 @@ void XUC::Decode()//接收并拆解视觉数据
 		xuc.distance = u8_to_float(m_frame + 17);
 		xuc.fireadvice = m_frame[21] & 0x01;
 		xuc.v_y = u8_to_float(m_frame + 25);
+		last_aim_tick = xTaskGetTickCount();
+		++aim_count;
 
 	}
 }

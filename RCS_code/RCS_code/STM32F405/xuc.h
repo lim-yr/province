@@ -4,6 +4,7 @@
 //#include <cstring>
 
 #include "FreeRTOS.h"
+#include "task.h"
 #include <judgement.h>
 #include "pid.h"
 #include <string.h>
@@ -26,7 +27,7 @@ struct TxPacket
 struct RxPacket
 {
 	uint8_t header = 0xA5;
-
+	
 	uint16_t checksum = 0;
 };
 
@@ -92,6 +93,7 @@ public:
 	ARMOR_COLOR own_color;
 
 	uint32_t count = 0, navi_count = 0, aim_count = 0;
+	TickType_t last_aim_tick = 0;
 	void Init(UART* huart, USART_TypeDef* Instance, uint32_t BaudRate);
 	void Decode();
 	void Encode();

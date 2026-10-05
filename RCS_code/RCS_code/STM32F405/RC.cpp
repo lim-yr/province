@@ -51,7 +51,7 @@ void RC::RC_CheckState() {
 		break;
 
 	case RC_STATE(MID, UP):
-		ctrl.mode = CONTROL::FOLLOW;
+		ctrl.mode = CONTROL::AUTOAIM;
 		break;
 
 	case RC_STATE(MID, MID):
@@ -116,6 +116,7 @@ void RC::RC_Control()//在此函数里面实现换算摇杆编码和底盘速度
 		{
 			state = false;
 		}
+		
 	}
 }
 

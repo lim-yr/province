@@ -5,6 +5,7 @@
 #include "RC.h"
 #include "imu.h"
 #include "motor.h"
+#include "xuc.h"
 
 void CONTROL::Init(std::vector<Motor*> motor)
 {
@@ -116,13 +117,73 @@ void CONTROL::CHASSIS::Update()
 
 void CONTROL::PANTILE::Update()
 {
+	Motor* yaw = ctrl.pantile_motor[PANTILE::TYPE::YAW];
 	Motor* pitch = ctrl.pantile_motor[PANTILE::TYPE::PITCH];
-	if (!ctrl.pantile.init && imu_pantile.GetAnglePitch() != 0) {
+
+	if (yaw == nullptr || pitch == nullptr)
+		return;
+
+	// Preserve the existing pitch initialization.
+	if (!ctrl.pantile.init &&
+		imu_pantile.GetAnglePitch() != 0.0f) {
 		if (imu_pantile.GetAnglePitch() > para.imu_pitch_min)
 			pitch->setangle -= para.pitch_speed;
 		else
 			ctrl.pantile.init = true;
+
+		return;
 	}
+
+	// Left middle, right up: upper-computer yaw control.
+	if (ctrl.mode != CONTROL::AUTOAIM)
+		return;
+
+	float target_yaw_deg;
+	TickType_t last_tick;
+	uint32_t received_count;
+
+	taskENTER_CRITICAL();
+	target_yaw_deg = xuc.yaw;
+	last_tick = xuc.last_aim_tick;
+	received_count = xuc.aim_count;
+	taskEXIT_CRITICAL();
+
+	if (received_count == 0)
+		return;
+
+	if (xTaskGetTickCount() - last_tick > pdMS_TO_TICKS(100))
+		return;
+
+	const float current_yaw_deg = imu_pantile.GetAngleYaw();
+
+	if (!std::isfinite(target_yaw_deg) ||
+		!std::isfinite(current_yaw_deg))
+		return;
+
+	float yaw_error_deg = target_yaw_deg - current_yaw_deg;
+
+	while (yaw_error_deg > 180.0f)
+		yaw_error_deg -= 360.0f;
+
+	while (yaw_error_deg < -180.0f)
+		yaw_error_deg += 360.0f;
+
+	constexpr float yaw_counts_per_deg = 8192.0f / 360.0f;
+	constexpr float yaw_direction = 1.0f;
+
+	float encoder_error =
+		yaw_error_deg * yaw_counts_per_deg * yaw_direction;
+
+	encoder_error =
+		std::max(-500.0f, std::min(500.0f, encoder_error));
+
+	yaw->setangle = static_cast<float>(yaw->angle[now]) + encoder_error;
+
+	while (yaw->setangle >= 8192.0f)
+		yaw->setangle -= 8192.0f;
+
+	while (yaw->setangle < 0.0f)
+		yaw->setangle += 8192.0f;
 }
 
 void CONTROL::SHOOTER::Update()
@@ -144,27 +205,42 @@ void CONTROL::SHOOTER::Update()
 	{
 		ctrl.shooter_motor[2]->setspeed = run ? -shoot_speed : 0;
 	}
-	GPIO_Init(GPIOC, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN, GPIO_PIN_9);
-	static bool last_trigger = false;
-	const bool trigger = (ctrl.mode == CONTROL::FIRE) && abs(rc.rc.ch[2]) > 500;
-	Motor* feeder = ctrl.supply_motor[0];
+	static bool last_retract = false;
+	static TickType_t retract_tick = 0;
 
-	if (trigger && !last_trigger && feeder != nullptr)
+	const bool push = (ctrl.mode == CONTROL::FIRE) && rc.state;
+	const bool retract = run && !rc.state;
+
+	if (retract && !last_retract)
+		retract_tick = xTaskGetTickCount();
+
+	last_retract = retract;
+
+	GPIO_Init(GPIOC, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN, GPIO_PIN_9);
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9,
+		push ? GPIO_PIN_SET : GPIO_PIN_RESET);
+
+	const bool supply_allowed =
+		retract &&
+		xTaskGetTickCount() - retract_tick >= pdMS_TO_TICKS(100);
+
+	if (ctrl.supply_motor[0] != nullptr)
 	{
 		taskENTER_CRITICAL();
-		if (feeder->motor_status == 0 && feeder->need_curcircle == 0.f)
-			feeder->need_curcircle =
-			(rc.rc.ch[2] < 0) ? 2.4004f : -2.4004f;
+
+		if (supply_allowed)
+		{
+			ctrl.supply_motor[0]->spinning = true;
+		}
+		else if (ctrl.supply_motor[0]->spinning) // 退出 FIRE 时只执行一次
+		{
+			ctrl.supply_motor[0]->motor_angle_status = ctrl.supply_motor[0]->sum_angle;
+			ctrl.supply_motor[0]->need_curcircle = 0.f;
+			ctrl.supply_motor[0]->motor_status = 1;
+			ctrl.supply_motor[0]->spinning = false;
+		}
+
 		taskEXIT_CRITICAL();
-	}
-	last_trigger = trigger;
-	if (rc.state)
-	{
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_SET);
-	}
-	else
-	{
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_RESET);
 	}
 }
 

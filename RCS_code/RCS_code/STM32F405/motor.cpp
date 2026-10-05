@@ -103,9 +103,9 @@ void Motor::Ontimer(uint8_t idata[][8], uint8_t* odata)//idate: receive;odate: t
 			supply_max_current_cycles = 0;
 			motor_status = 0;
 			need_curcircle = 0.f;
-			setspeed = adjspeed;
+			setspeed = -280.f;
 			current = setrange(static_cast<int32_t>(pid[speed].Position(
-				static_cast<float>(setspeed - curspeed), maxcurrent)), maxcurrent);
+				static_cast<float>(setspeed - curspeed), 8000)), 8000);
 		}
 		else {
 			const int32_t actual_angle = sum_angle +
@@ -135,45 +135,9 @@ void Motor::Ontimer(uint8_t idata[][8], uint8_t* odata)//idate: receive;odate: t
 				const int32_t error = motor_angle_status - actual_angle;
 				const int32_t abs_error = error >= 0 ? error : -error;
 
-				if (abs_error <= 100 && std::abs(curspeed) <= 80)
-				{
-					supply_max_current_cycles = 0;
-					need_curcircle = 0.f;
-					motor_status = 0;
-					setspeed = 0;
-					current = 0;
-				}
-				else
-				{
-				const int32_t speed_limit =
-					abs_error < 1500 ? 300 : para.ace_speed;
+				setspeed = setrange(static_cast<int32_t>(pid[position].Position(static_cast<float>(error), 300)),300);
 
-				setspeed = setrange(static_cast<int32_t>(
-					pid[position].Position(
-						static_cast<float>(error), speed_limit)), speed_limit);
-
-				current = setrange(static_cast<int32_t>(
-					pid[speed].Position(
-						static_cast<float>(setspeed - curspeed), 3000)), 14000);
-				if (this == ctrl.supply_motor[0])
-				{
-					if (current >= 14000 || current <= -14000)
-					{
-						if (++supply_max_current_cycles > 2)
-						{
-							current = 0;
-							setspeed = 0;
-							need_curcircle = 0.f;
-							motor_status = 0;
-							supply_max_current_cycles = 0;
-						}
-					}
-					else
-					{
-						supply_max_current_cycles = 0;
-					}
-				}
-				}
+				current = setrange(static_cast<int32_t>(pid[speed].Position(static_cast<float>(setspeed - curspeed),6000)),6000);
 			}
 			else
 			{

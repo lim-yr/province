@@ -40,7 +40,7 @@ Motor can2_motor[CAN2_MOTOR_NUM] = {
 	Motor(M3508,SPD,shooter, ID1, PID(40.f, 0.0f, 1.5f)),
 	Motor(M3508,SPD,shooter, ID2, PID(40.f, 0.0f, 1.5f)),
 	Motor(M3508,SPD,shooter, ID3, PID(40.f, 0.0f, 1.5f)),
-	Motor(M3508,ACE,supply , ID5, PID(18.0f, 0.0f, 0.0f),PID(0.5f, 0.0f, 0.0f))
+	Motor(M3508,ACE,supply , ID5, PID(20.0f, 0.0f, 0.0f),PID(0.5f, 0.0f, 0.0f))
 };   
 DMMOTOR DMmotor[4] = {
 	DMMOTOR(0x01, P_S, L_F),
