@@ -188,7 +188,7 @@ void CONTROL::PANTILE::Update()
 
 void CONTROL::SHOOTER::Update()
 {
-	ctrl.shooter.openRub = (ctrl.mode == CONTROL::FIRE);
+	ctrl.shooter.openRub = (ctrl.mode == CONTROL::FIRE)||(ctrl.mode == CONTROL::AUTOAIM);
 	const bool run = openRub;
 
 	if (ctrl.shooter_motor[0] != nullptr)
@@ -205,22 +205,36 @@ void CONTROL::SHOOTER::Update()
 	{
 		ctrl.shooter_motor[2]->setspeed = run ? -shoot_speed : 0;
 	}
+
+	GPIO_Init(GPIOC, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN, GPIO_PIN_9);
+	GPIO_Init(GPIOA, GPIO_MODE_INPUT, GPIO_PULLDOWN, GPIO_PIN_8);
 	static bool last_retract = false;
 	static TickType_t retract_tick = 0;
 
-	const bool push = (ctrl.mode == CONTROL::FIRE) && rc.state;
-	const bool retract = run && !rc.state;
+	const TickType_t now = xTaskGetTickCount();
+
+	bool pc_fire = false;
+	taskENTER_CRITICAL();
+	pc_fire = xuc.fireadvice &&
+		(now - xuc.last_aim_tick <= pdMS_TO_TICKS(100));
+	taskEXIT_CRITICAL();
+
+	const bool manual_fire = (ctrl.mode == CONTROL::FIRE) && rc.state;
+	const bool autoaim_fire = (ctrl.mode == CONTROL::AUTOAIM) && pc_fire;
+
+	const bool push = (manual_fire || autoaim_fire) &&HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_8);
+	const bool retract = run && !push;
 
 	if (retract && !last_retract)
 		retract_tick = xTaskGetTickCount();
 
 	last_retract = retract;
 
-	GPIO_Init(GPIOC, GPIO_MODE_OUTPUT_PP, GPIO_PULLDOWN, GPIO_PIN_9);
+	
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9,
 		push ? GPIO_PIN_SET : GPIO_PIN_RESET);
 
-	const bool supply_allowed =
+	const bool supply_allowed = 
 		retract &&
 		xTaskGetTickCount() - retract_tick >= pdMS_TO_TICKS(100);
 
@@ -232,9 +246,20 @@ void CONTROL::SHOOTER::Update()
 		{
 			ctrl.supply_motor[0]->spinning = true;
 		}
+		else if (!run) // 退出FIRE：禁止位置环，电流清零
+		{
+			ctrl.supply_motor[0]->spinning = false;
+			ctrl.supply_motor[0]->need_curcircle = 0.f;
+			ctrl.supply_motor[0]->motor_status = 0;
+			ctrl.supply_motor[0]->setspeed = 0;
+			ctrl.supply_motor[0]->current = 0;
+			ctrl.supply_motor[0]->setcurrent = 0;
+		}
+
 		else if (ctrl.supply_motor[0]->spinning) // 退出 FIRE 时只执行一次
 		{
-			ctrl.supply_motor[0]->motor_angle_status = ctrl.supply_motor[0]->sum_angle;
+			ctrl.supply_motor[0]->current = 0;
+			//ctrl.supply_motor[0]->motor_angle_status = ctrl.supply_motor[0]->sum_angle;
 			ctrl.supply_motor[0]->need_curcircle = 0.f;
 			ctrl.supply_motor[0]->motor_status = 1;
 			ctrl.supply_motor[0]->spinning = false;

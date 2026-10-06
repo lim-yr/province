@@ -103,7 +103,7 @@ void Motor::Ontimer(uint8_t idata[][8], uint8_t* odata)//idate: receive;odate: t
 			supply_max_current_cycles = 0;
 			motor_status = 0;
 			need_curcircle = 0.f;
-			setspeed = -280.f;
+			setspeed = -350.f;
 			current = setrange(static_cast<int32_t>(pid[speed].Position(
 				static_cast<float>(setspeed - curspeed), 8000)), 8000);
 		}

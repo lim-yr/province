@@ -50,6 +50,7 @@ public:
 		bool fraction = false;
 		bool fullheat_shoot = false;
 		bool heat_ulimit = false;
+		int test = 0;
 		int16_t shoot_speed = 3985;
 		void Update();
 	};
