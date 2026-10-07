@@ -213,10 +213,11 @@ void CONTROL::SHOOTER::Update()
 
 	const TickType_t now = xTaskGetTickCount();
 
-	bool pc_fire = false;
+	int8_t pc_fire = 0;
 	taskENTER_CRITICAL();
-	pc_fire = xuc.fireadvice &&
-		(now - xuc.last_aim_tick <= pdMS_TO_TICKS(100));
+	if (now - xuc.last_aim_tick <= pdMS_TO_TICKS(100)) {
+		pc_fire = xuc.fireadvice;
+	}
 	taskEXIT_CRITICAL();
 
 	const bool manual_fire = (ctrl.mode == CONTROL::FIRE) && rc.state;
@@ -233,7 +234,13 @@ void CONTROL::SHOOTER::Update()
 	
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9,
 		push ? GPIO_PIN_SET : GPIO_PIN_RESET);
+	if (push && pc_fire == 2) {
+		pc_fire = 0;
 
+		taskENTER_CRITICAL();
+		xuc.fireadvice = 0;
+		taskEXIT_CRITICAL();
+	}
 	const bool supply_allowed = 
 		retract &&
 		xTaskGetTickCount() - retract_tick >= pdMS_TO_TICKS(100);

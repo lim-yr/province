@@ -36,7 +36,8 @@ void XUC::Decode()//接收并拆解视觉数据
 		xuc.yaw_diff = u8_to_float(m_frame + 9);
 		xuc.pitch_diff = u8_to_float(m_frame + 13) * PI / 180.f;
 		xuc.distance = u8_to_float(m_frame + 17);
-		xuc.fireadvice = m_frame[21] & 0x01;
+		const uint8_t command = m_frame[21];
+		xuc.fireadvice = command <= 2 ? command : 0;
 		xuc.v_y = u8_to_float(m_frame + 25);
 		last_aim_tick = xTaskGetTickCount();
 		++aim_count;

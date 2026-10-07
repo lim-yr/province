@@ -45,7 +45,7 @@ public:
 	float yaw_diff;
 	float pitch_diff;
 	float distance;
-	bool fireadvice = false;
+	uint8_t fireadvice{};
 	float v_y;
 	//Navigation
 	float speed_x = 0, speed_y = 0, prespeedx, prespeedy;
