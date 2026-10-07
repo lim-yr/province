@@ -137,7 +137,7 @@ void Motor::Ontimer(uint8_t idata[][8], uint8_t* odata)//idate: receive;odate: t
 
 				setspeed = setrange(static_cast<int32_t>(pid[position].Position(static_cast<float>(error), 300)),300);
 
-				current = setrange(static_cast<int32_t>(pid[speed].Position(static_cast<float>(setspeed - curspeed),6000)),6000);
+				current = setrange(static_cast<int32_t>(pid[speed].Position(static_cast<float>(setspeed - curspeed),8000)),8000);
 			}
 			else
 			{

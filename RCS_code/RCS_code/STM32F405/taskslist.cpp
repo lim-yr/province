@@ -84,14 +84,21 @@ void MotorUpdateTask(void* pvParameters)
 
 		for (auto& motor : can2_motor)motor.Ontimer(can2.data, can2.temp_data);
 
-		DMmotor[0].State_Decode(can1, can1.jointidata)
-			.DMmotor_Ontimer(can1, DMmotor[0].Kp, DMmotor[0].Kd, can1.jointpdata[0]);
-		DMmotor[1].State_Decode(can1, can1.jointidata)
-			.DMmotor_Ontimer(can1, DMmotor[1].Kp, DMmotor[1].Kd, can1.jointpdata[1]);
-		DMmotor[2].State_Decode(can1, can1.jointidata)
-			.DMmotor_Ontimer(can1, DMmotor[2].Kp, DMmotor[2].Kd, can1.jointpdata[2]);
-		DMmotor[3].State_Decode(can1, can1.jointidata)
-			.DMmotor_Ontimer(can1, DMmotor[3].Kp, DMmotor[3].Kd, can1.jointpdata[3]);
+		DMmotor[0].State_Decode(can1, can1.jointidata);
+		DMmotor[0].HomeTowardZero(0.01f);
+		DMmotor[0].DMmotor_Ontimer(can1, DMmotor[0].Kp, DMmotor[0].Kd, can1.jointpdata[0]);
+
+		DMmotor[1].State_Decode(can1, can1.jointidata);
+		DMmotor[1].HomeTowardZero(0.01f);
+		DMmotor[1].DMmotor_Ontimer(can1, DMmotor[1].Kp, DMmotor[1].Kd, can1.jointpdata[1]);
+
+		DMmotor[2].State_Decode(can1, can1.jointidata);
+		DMmotor[2].HomeTowardZero(0.01f);
+		DMmotor[2].DMmotor_Ontimer(can1, DMmotor[2].Kp, DMmotor[2].Kd, can1.jointpdata[2]);
+
+		DMmotor[3].State_Decode(can1, can1.jointidata);
+		DMmotor[3].HomeTowardZero(0.01f);
+		DMmotor[3].DMmotor_Ontimer(can1, DMmotor[3].Kp, DMmotor[3].Kd, can1.jointpdata[3]);
 
 	vTaskDelayUntil(&xlastWakeTime, pdMS_TO_TICKS(2));//开始执行该任务之后1ms再执行该任务
 }
@@ -157,10 +164,18 @@ void DecodeTask(void* pvParameters)
 
 void ArmTask(void* pvParameters)
 {
+	uint32_t cnt = 0;
+
 	while (true)
 	{
 		//初始化达妙电机
 		for (auto& motor : DMmotor) motor.DMmotorinit();
+		while (++cnt == 2) {
+			for (auto& motor : DMmotor) { 
+				motor.homing = true; 
+				motor.homeDir = 1; 
+			}
+		}
 		power.Send();
 		vTaskDelay(100);
 	}

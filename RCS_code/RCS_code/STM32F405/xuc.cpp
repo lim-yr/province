@@ -59,7 +59,7 @@ void XUC::Encode()//将主控板上的数据编码,为了发给视觉
 	TxNuc.aim_x = aim_x;
 	TxNuc.aim_y = aim_y;
 	TxNuc.aim_z = aim_z;
-	TxNuc.fire_mode = (ctrl.mode == CONTROL::FIRE);
+	TxNuc.fire_mode = (ctrl.mode == CONTROL::AUTOAIM);
 	TxNuc.checksum = 0;  // 初始化校验和为0
 
 	// 计算数据包的总大小

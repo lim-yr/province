@@ -42,12 +42,33 @@ void DMMOTOR::DMmotor_transmit()
 
 void DMMOTOR::DMmotorinit()
 {
-	setPos = 0.0f;
-	setSpeed = 0.1f;
+	setSpeed = 0.5f;
 	CanComm_ControlCmd(can1, CMD_MOTOR_MODE, ID);//发指令,哪条CAN总线，哪个电机ID
 	delay.delay_ms(1);
 }
 
+void DMMOTOR::HomeTowardZero(float step)
+{
+	if (!homing) return;
+	if (step < 0.0f) step = -step;
+	
+	if (homeDir < 0)
+	{
+		setPos = pos - step;
+		if (setPos <= 0.0f) {
+			setPos = 0.0f;
+			homing = false;
+		}
+	}
+	else
+	{
+		setPos = pos + step;
+		if (setPos >= 0.0f) {
+			setPos = 0.0f;
+			homing = false;
+		}
+	}
+}
 void DMMOTOR::SetTorque(float settorque)
 {
 	setTorque = settorque;

@@ -43,7 +43,7 @@ void RC::RC_CheckState() {
 		break;
 
 	case RC_STATE(UP, MID):
-		ctrl.mode = CONTROL::ROTATION;
+		ctrl.mode = CONTROL::FOLLOW;
 		break;
 
 	case RC_STATE(UP, DOWN):

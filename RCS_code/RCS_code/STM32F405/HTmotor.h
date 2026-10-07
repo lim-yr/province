@@ -61,6 +61,8 @@ public:
 	float torque, setTorque;
 	float Kp = 10.f;
 	float Kd = 0.6f;
+	bool homing = false; //是否正在进行零位校准
+	int homeDir = -1; //-1为反转，1为正转
 
 	float uint_to_float(int x_int, float x_min, float x_max, int bits);//计算用函数
 	int float_to_uint(float x, float x_min, float x_max, int bits);
@@ -79,6 +81,7 @@ public:
 	void DMmotor_transmit();//使能并发送控制数据
 
 	void SetTorque(float settorque);
+	void HomeTowardZero(float step);
 	float GetPosition();
 	float GetSpeed();
 	float GetTorque();
