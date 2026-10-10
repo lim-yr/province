@@ -1,6 +1,7 @@
 #include "label.h"
 #include "RC.h"
 #include "control.h"
+#include "HTmotor.h"
 
 void RC::Init(UART* huart, USART_TypeDef* Instance, const uint32_t BaudRate)
 {
@@ -83,6 +84,8 @@ void RC::RC_CheckState() {
 
 void RC::RC_Control()//在此函数里面实现换算摇杆编码和底盘速度
 {
+	static bool dm0_command_sent = false;
+
 	ctrl.chassis.speedx = 0;
 	ctrl.chassis.speedy = 0;
 	ctrl.chassis.speedz = 0;
@@ -118,6 +121,67 @@ void RC::RC_Control()//在此函数里面实现换算摇杆编码和底盘速度
 		}
 		
 	}
+	if (online && ctrl.mode == CONTROL::STOP)
+	{
+		ctrl.chassis.speedx = 0;
+		ctrl.chassis.speedy = 0;
+		ctrl.chassis.speedz = 0;
+		ctrl.chassis.speedx = CONTROL::Setrange(rc.ch[3], 660) * para.max_speed / 660;
+		ctrl.chassis.speedy = CONTROL::Setrange(rc.ch[2], 660) * para.max_speed / 660;
+		if (!dm0_command_sent)
+		{
+			// 取消回零过程，避免覆盖目标位置
+			DMmotor[0].homing = false;
+			DMmotor[1].homing = false;
+			DMmotor[2].homing = false;
+			DMmotor[3].homing = false;
+
+			// 以当前反馈位置为起点，转动 1 rad
+			DMmotor[0].setPos = 6.0f;
+			DMmotor[1].setPos = -6.0f;
+			DMmotor[2].setPos = 9.0f;
+			DMmotor[3].setPos = -9.0f;
+
+			// 速度限制，单位 rad/s
+			DMmotor[0].setSpeed = 1.5f;
+			DMmotor[1].setSpeed = 1.5f;
+			DMmotor[2].setSpeed = 1.5f;
+			DMmotor[3].setSpeed = 1.5f;
+
+			// 限制目标位置范围
+			if (DMmotor[0].setPos > P_MAX)
+				DMmotor[0].setPos = P_MAX;
+			if (DMmotor[0].setPos < P_MIN)
+				DMmotor[0].setPos = P_MIN;
+
+			if (DMmotor[1].setPos > P_MAX)
+				DMmotor[1].setPos = P_MAX;
+			if (DMmotor[1].setPos < P_MIN)
+				DMmotor[1].setPos = P_MIN;
+
+			if (DMmotor[2].setPos > P_MAX)
+				DMmotor[2].setPos = P_MAX;
+			if (DMmotor[2].setPos < P_MIN)
+				DMmotor[2].setPos = P_MIN;
+
+			if (DMmotor[3].setPos > P_MAX)
+				DMmotor[3].setPos = P_MAX;
+			if (DMmotor[3].setPos < P_MIN)
+				DMmotor[3].setPos = P_MIN;
+
+			dm0_command_sent = true;
+		}
+	}
+	else
+	{
+		// 离开 STOP 后，下一次进入 STOP 可以再次转 1 rad
+		dm0_command_sent = false;
+		DMmotor[0].setPos = 0.0f;
+		DMmotor[1].setPos = 0.0f;
+		DMmotor[2].setPos = 0.0f;
+		DMmotor[3].setPos = 0.0f;
+	}
+	
 }
 
 void RC::Decode()
