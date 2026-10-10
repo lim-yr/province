@@ -42,7 +42,7 @@ void DMMOTOR::DMmotor_transmit()
 
 void DMMOTOR::DMmotorinit()
 {
-	setSpeed = 0.5f;
+	setSpeed = 2.5f;
 	CanComm_ControlCmd(can1, CMD_MOTOR_MODE, ID);//发指令,哪条CAN总线，哪个电机ID
 	delay.delay_ms(1);
 }
