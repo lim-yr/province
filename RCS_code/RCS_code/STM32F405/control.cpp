@@ -276,6 +276,66 @@ void CONTROL::SHOOTER::Update()
 	}
 }
 
+void CONTROL::Climb(bool stopActive)
+{
+
+	static bool wasStop = false;
+
+	if (stopActive && !wasStop)
+	{
+			// 取消回零过程，避免覆盖目标位置
+			DMmotor[0].homing = false;
+			DMmotor[1].homing = false;
+			DMmotor[2].homing = false;
+			DMmotor[3].homing = false;
+
+			// 以当前反馈位置为起点，转动 1 rad
+			DMmotor[0].setPos = 6.0f;
+			DMmotor[1].setPos = -6.0f;
+			DMmotor[2].setPos = 9.0f;
+			DMmotor[3].setPos = -9.0f;
+
+			// 速度限制，单位 rad/s
+			DMmotor[0].setSpeed = 1.5f;
+			DMmotor[1].setSpeed = 1.5f;
+			DMmotor[2].setSpeed = 1.5f;
+			DMmotor[3].setSpeed = 1.5f;
+
+			// 限制目标位置范围
+			if (DMmotor[0].setPos > P_MAX)
+				DMmotor[0].setPos = P_MAX;
+			if (DMmotor[0].setPos < P_MIN)
+				DMmotor[0].setPos = P_MIN;
+
+			if (DMmotor[1].setPos > P_MAX)
+				DMmotor[1].setPos = P_MAX;
+			if (DMmotor[1].setPos < P_MIN)
+				DMmotor[1].setPos = P_MIN;
+
+			if (DMmotor[2].setPos > P_MAX)
+				DMmotor[2].setPos = P_MAX;
+			if (DMmotor[2].setPos < P_MIN)
+				DMmotor[2].setPos = P_MIN;
+
+			if (DMmotor[3].setPos > P_MAX)
+				DMmotor[3].setPos = P_MAX;
+			if (DMmotor[3].setPos < P_MIN)
+				DMmotor[3].setPos = P_MIN;
+		}
+
+	else if (!stopActive && wasStop)
+	{
+		// 刚退出 STOP：触发一次回零
+		DMmotor[0].setPos = 0.0f;
+		DMmotor[1].setPos = 0.0f;
+		DMmotor[2].setPos = 0.0f;
+		DMmotor[3].setPos = 0.0f;
+	}
+
+	wasStop = stopActive;
+
+}
+
 float CONTROL::CHASSIS::Ramp(float setval, float curval, uint32_t RampSlope)
 {
 

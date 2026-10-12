@@ -64,6 +64,7 @@ public:
 	float GetDelta(float delta);
 	void Init(std::vector<Motor*> motor);
 	void init_dm();
+	void Climb(bool stopActive);
 private:
 
 };
