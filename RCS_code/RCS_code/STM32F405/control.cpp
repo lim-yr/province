@@ -169,13 +169,13 @@ void CONTROL::PANTILE::Update()
 		yaw_error_deg += 360.0f;
 
 	constexpr float yaw_counts_per_deg = 8192.0f / 360.0f;
-	constexpr float yaw_direction = 1.0f;
+	constexpr float yaw_direction = -1.0f;
 
 	float encoder_error =
 		yaw_error_deg * yaw_counts_per_deg * yaw_direction;
 
 	encoder_error =
-		std::max(-500.0f, std::min(500.0f, encoder_error));
+		std::max(-300.0f, std::min(300.0f, encoder_error));
 
 	yaw->setangle = static_cast<float>(yaw->angle[now]) + encoder_error;
 
