@@ -156,6 +156,10 @@ void Motor::Ontimer(uint8_t idata[][8], uint8_t* odata)//idate: receive;odate: t
 		if (!feedback_recent || temperature > 70)
 		{
 			setspeed = 0;
+			// ===== BEGIN CODEX: clear stale gimbal output on feedback loss or overheat =====
+			current = 0;
+			setcurrent = 0;
+			// ===== END CODEX: clear stale gimbal output on feedback loss or overheat =====
 		}
 		else if(this == ctrl.pantile_motor[CONTROL::PANTILE::TYPE::YAW])
 		{
@@ -164,10 +168,17 @@ void Motor::Ontimer(uint8_t idata[][8], uint8_t* odata)//idate: receive;odate: t
 				setangle = angle[now];
 				pos_inited1 = true;
 			}
-			const float position_error = static_cast<float>(getdeltaa(static_cast<int16_t>(setangle - angle[now])));
-			setspeed = static_cast<int32_t>(pid[position].Position(position_error, maxspeed));
-			setspeed = setrange(setspeed, maxspeed);
-			const float speed_error = static_cast<float>(setspeed - curspeed);
+			// ===== BEGIN CODEX: yaw fractional position and speed =====
+			// Preserve fractional corrections from the small AUTOAIM gain.
+			float position_error = setangle - angle[now];
+			if (position_error <= -4096.0f) position_error += 8192.0f;
+			else if (position_error > 4096.0f) position_error -= 8192.0f;
+			const float target_speed = std::max(-static_cast<float>(maxspeed),
+				std::min(static_cast<float>(maxspeed),
+					pid[position].Position(position_error, maxspeed)));
+			setspeed = static_cast<int32_t>(target_speed); // Legacy integer readback.
+			const float speed_error = target_speed - static_cast<float>(curspeed);
+			// ===== END CODEX: yaw fractional position and speed =====
 			setcurrent = static_cast<int32_t>(pid[speed].Position(speed_error, maxcurrent));
 			current = setrange(setcurrent, maxcurrent);
 		}

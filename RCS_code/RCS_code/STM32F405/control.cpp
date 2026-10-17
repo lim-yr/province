@@ -138,12 +138,20 @@ void CONTROL::PANTILE::Update()
 	if (ctrl.mode != CONTROL::AUTOAIM)
 		return;
 
-	float target_yaw_deg;
+	float target_yaw_deg,target_pitch_deg	;
 	TickType_t last_tick;
 	uint32_t received_count;
 
 	taskENTER_CRITICAL();
 	target_yaw_deg = xuc.yaw;
+	// ===== BEGIN CODEX: validate pitch before applying the soft limit =====
+	const float pc_pitch_deg = xuc.pitch * 180.0f / PI;
+	// Preserve invalid values so the check after taskEXIT_CRITICAL rejects them.
+	target_pitch_deg = std::isfinite(pc_pitch_deg)
+		? std::min(para.imu_pitch_max, std::max(pc_pitch_deg, para.imu_pitch_min))
+		: pc_pitch_deg;
+	// ===== END CODEX: validate pitch before applying the soft limit =====
+
 	last_tick = xuc.last_aim_tick;
 	received_count = xuc.aim_count;
 	taskEXIT_CRITICAL();
@@ -154,14 +162,19 @@ void CONTROL::PANTILE::Update()
 	if (xTaskGetTickCount() - last_tick > pdMS_TO_TICKS(100))
 		return;
 
+	// ===== BEGIN CODEX: validate both aim axes outside the critical section =====
 	const float current_yaw_deg = imu_pantile.GetAngleYaw();
+	const float current_pitch_deg = imu_pantile.GetAnglePitch();
 
 	if (!std::isfinite(target_yaw_deg) ||
-		!std::isfinite(current_yaw_deg))
+		!std::isfinite(current_yaw_deg) ||
+		!std::isfinite(target_pitch_deg) ||
+		!std::isfinite(current_pitch_deg))
 		return;
+	// ===== END CODEX: validate both aim axes outside the critical section =====
 
 	float yaw_error_deg = target_yaw_deg - current_yaw_deg;
-
+	float pitch_error_deg = target_pitch_deg - current_pitch_deg; // CODEX: use validated feedback.
 	while (yaw_error_deg > 180.0f)
 		yaw_error_deg -= 360.0f;
 
@@ -170,14 +183,77 @@ void CONTROL::PANTILE::Update()
 
 	constexpr float yaw_counts_per_deg = 8192.0f / 360.0f;
 	constexpr float yaw_direction = -1.0f;
+	constexpr float pitch_direction = 1.0f;
 
-	float encoder_error =
-		yaw_error_deg * yaw_counts_per_deg * yaw_direction;
+	// ===== BEGIN CODEX: near/far yaw correction =====
+	// Only the gain uses absolute error; the correction retains its direction.
+	constexpr float yaw_deadband_deg = 0.5f;
+	constexpr float yaw_near_region_deg = 5.0f;
+	constexpr float yaw_full_gain_error_deg = 16.0f;
+	constexpr float yaw_min_gain = 0.15f;
+	constexpr float yaw_near_max_gain = 0.35f;
+	constexpr float yaw_far_gain = 0.5f;
+	const float yaw_abs_error_deg = std::fabs(yaw_error_deg);
+	const float yaw_gain_blend = std::max(0.0f, std::min(1.0f,
+		(yaw_abs_error_deg - yaw_deadband_deg) /
+		(yaw_full_gain_error_deg - yaw_deadband_deg)));
+	const float yaw_near_gain = yaw_min_gain +
+		(yaw_near_max_gain - yaw_min_gain) * yaw_gain_blend;
 
-	encoder_error =
-		std::max(-300.0f, std::min(300.0f, encoder_error));
+	float yaw_aim_gain = yaw_near_gain;
+	if (yaw_abs_error_deg > yaw_near_region_deg)
+	{
+		const float transition = std::max(0.0f, std::min(1.0f,
+			(yaw_abs_error_deg - yaw_near_region_deg) /
+			(yaw_full_gain_error_deg - yaw_near_region_deg)));
+		const float weight = transition * transition * (3.0f - 2.0f * transition);
+		// Blend into the faster far-target gain without a threshold jump.
+		yaw_aim_gain = yaw_near_gain + (yaw_far_gain - yaw_near_gain) * weight;
+	}
 
-	yaw->setangle = static_cast<float>(yaw->angle[now]) + encoder_error;
+	// Skip only yaw correction in the deadband; pitch still updates.
+	float yaw_encoder_error = 0.0f;
+	if (yaw_abs_error_deg > yaw_deadband_deg)
+		yaw_encoder_error = yaw_error_deg * yaw_counts_per_deg *
+			yaw_direction * yaw_aim_gain;
+	// ===== END CODEX: near/far yaw correction =====
+	
+	// ===== BEGIN CODEX: automatic pitch uses the manual full-stick increment =====
+	constexpr float pitch_auto_deadband_deg = 0.1f;
+	constexpr float pitch_auto_full_step_error_deg = 1.0f;
+	constexpr float pitch_auto_max_offset = 3000.0f;
+	const float pitch_abs_error_deg = std::fabs(pitch_error_deg);
+	const float pitch_step_scale = std::max(0.0f, std::min(1.0f,
+		(pitch_abs_error_deg - pitch_auto_deadband_deg) /
+		(pitch_auto_full_step_error_deg - pitch_auto_deadband_deg)));
+	// para.pitch_speed is encoder counts per control update, as in manual mode.
+	const float pitch_step = (pitch_error_deg >= 0.0f ? 1.0f : -1.0f) *
+		pitch_direction * std::fabs(para.pitch_speed) * pitch_step_scale;
+	// ===== END CODEX: automatic pitch uses the manual full-stick increment =====
+
+	yaw_encoder_error =
+		std::max(-300.0f, std::min(300.0f, yaw_encoder_error));
+	// ===== BEGIN CODEX: accumulate pitch target with bounded lead and soft limits =====
+	const float pitch_position = static_cast<float>(pitch->sum_angle);
+	const bool pitch_limit_reached =
+		(pitch_error_deg > 0.0f && current_pitch_deg >= para.imu_pitch_max) ||
+		(pitch_error_deg < 0.0f && current_pitch_deg <= para.imu_pitch_min);
+	if (pitch_abs_error_deg <= pitch_auto_deadband_deg || pitch_limit_reached)
+	{
+		// Cancel queued motion at the target or the directional software limit.
+		pitch->setangle = pitch_position;
+	}
+	else
+	{
+		// Drop an old lead when the requested direction reverses.
+		if ((pitch->setangle - pitch_position) * pitch_step < 0.0f)
+			pitch->setangle = pitch_position;
+		pitch->setangle = std::max(pitch_position - pitch_auto_max_offset,
+			std::min(pitch_position + pitch_auto_max_offset, pitch->setangle + pitch_step));
+	}
+	// ===== END CODEX: accumulate pitch target with bounded lead and soft limits =====
+
+	yaw->setangle = static_cast<float>(yaw->angle[now]) + yaw_encoder_error;
 
 	while (yaw->setangle >= 8192.0f)
 		yaw->setangle -= 8192.0f;
