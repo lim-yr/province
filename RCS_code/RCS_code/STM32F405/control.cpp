@@ -289,17 +289,74 @@ void CONTROL::SHOOTER::Update()
 
 	const TickType_t now = xTaskGetTickCount();
 
-	int8_t pc_fire = 0;
-	taskENTER_CRITICAL();
-	if (now - xuc.last_aim_tick <= pdMS_TO_TICKS(100)) {
-		pc_fire = xuc.fireadvice;
+	// ===== BEGIN CODEX: retain the first switch-high time and require current high =====
+	constexpr TickType_t fire_switch_delay_ticks = pdMS_TO_TICKS(50);
+	static bool fire_switch_high_seen = false;
+	static TickType_t fire_switch_first_high_tick = 0;
+	const bool fire_switch_high =
+		HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_8) == GPIO_PIN_SET;
+	if (fire_switch_high && !fire_switch_high_seen) {
+		fire_switch_high_seen = true;
+		fire_switch_first_high_tick = now;
 	}
+	// A low input blocks output without restarting the first-high timer.
+	const bool fire_switch_permitted = fire_switch_high && fire_switch_high_seen &&
+		(now - fire_switch_first_high_tick >= fire_switch_delay_ticks);
+	// ===== END CODEX: retain the first switch-high time and require current high =====
+
+	// ===== BEGIN CODEX: latch one automatic push request for 100 ms =====
+	constexpr TickType_t single_fire_hold_ticks = pdMS_TO_TICKS(100);
+	static bool single_fire_active = false;
+	static bool single_fire_pending = false;
+	static TickType_t single_fire_start_tick = 0;
+	static uint32_t single_fire_seen_count = 0;
+
+	int8_t pc_fire = 0;
+	bool pc_online;
+	uint32_t single_fire_request_count;
+	TickType_t single_fire_request_tick;
+	taskENTER_CRITICAL();
+	pc_online = xuc.aim_count != 0 &&
+		(now - xuc.last_aim_tick <= pdMS_TO_TICKS(100));
+	if (pc_online)
+		pc_fire = xuc.fireadvice;
+	single_fire_request_count = xuc.single_fire_request_count;
+	single_fire_request_tick = xuc.single_fire_request_tick;
 	taskEXIT_CRITICAL();
 
-	const bool manual_fire = (ctrl.mode == CONTROL::FIRE) && rc.state;
-	const bool autoaim_fire = (ctrl.mode == CONTROL::AUTOAIM) && pc_fire;
+	const bool new_single_fire_request =
+		single_fire_request_count != single_fire_seen_count;
+	// Consume events even when disabled or busy; never queue a delayed extra shot.
+	single_fire_seen_count = single_fire_request_count;
 
-	const bool push = (manual_fire || autoaim_fire) &&HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_8);
+	if (ctrl.mode != CONTROL::AUTOAIM || !pc_online) {
+		single_fire_active = false;
+		single_fire_pending = false;
+	} else {
+		if (single_fire_active) {
+			if (now - single_fire_start_tick >= single_fire_hold_ticks)
+				single_fire_active = false;
+		} else if (!single_fire_pending && new_single_fire_request &&
+			now - single_fire_request_tick <= pdMS_TO_TICKS(100)) {
+			single_fire_pending = true;
+		}
+		// Keep the current request while waiting; start its 100 ms at output enable.
+		if (single_fire_pending && fire_switch_permitted) {
+			single_fire_pending = false;
+			single_fire_active = true;
+			single_fire_start_tick = now;
+		}
+	}
+
+	const bool manual_fire = (ctrl.mode == CONTROL::FIRE) && rc.state;
+	// Command 1 is held fire; later command 0 does not cancel an active single shot.
+	const bool autoaim_fire = (ctrl.mode == CONTROL::AUTOAIM) &&
+		(pc_fire == 1 || single_fire_active);
+	// ===== END CODEX: latch one automatic push request for 100 ms =====
+
+	// ===== BEGIN CODEX: apply the same switch permission to both fire sources =====
+	const bool push = (manual_fire || autoaim_fire) && fire_switch_permitted;
+	// ===== END CODEX: apply the same switch permission to both fire sources =====
 	const bool retract = run && !push;
 
 	if (retract && !last_retract)
@@ -310,13 +367,6 @@ void CONTROL::SHOOTER::Update()
 	
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9,
 		push ? GPIO_PIN_SET : GPIO_PIN_RESET);
-	if (push && pc_fire == 2) {
-		pc_fire = 0;
-
-		taskENTER_CRITICAL();
-		xuc.fireadvice = 0;
-		taskEXIT_CRITICAL();
-	}
 	const bool supply_allowed = 
 		retract &&
 		xTaskGetTickCount() - retract_tick >= pdMS_TO_TICKS(100);
@@ -351,6 +401,32 @@ void CONTROL::SHOOTER::Update()
 		taskEXIT_CRITICAL();
 	}
 }
+
+// ===== BEGIN CODEX: integrate climb posture from remote stair branch commit 2702032 =====
+void CONTROL::Climb(bool active)
+{
+	static bool was_active = false;
+	if (active == was_active)
+		return;
+
+	// Absolute motor positions in radians, ordered by CAN1 IDs 1, 2, 3, 4.
+	constexpr float climb_targets[4] = { 6.0f, -6.0f, 9.0f, -9.0f };
+	constexpr float climb_speed = 1.5f;
+
+	taskENTER_CRITICAL();
+	for (int i = 0; i < 4; ++i) {
+		DMMOTOR& motor = DMmotor[i];
+		// Cancel startup homing so it cannot overwrite the climb or return target.
+		motor.homing = false;
+		motor.setPos = active ? climb_targets[i] : 0.0f;
+		motor.setPos = std::max(static_cast<float>(P_MIN),
+			std::min(static_cast<float>(P_MAX), motor.setPos));
+		motor.setSpeed = climb_speed;
+	}
+	was_active = active;
+	taskEXIT_CRITICAL();
+}
+// ===== END CODEX: integrate climb posture from origin/climb commit 2702032 =====
 
 float CONTROL::CHASSIS::Ramp(float setval, float curval, uint32_t RampSlope)
 {

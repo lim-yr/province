@@ -105,7 +105,7 @@ void Motor::Ontimer(uint8_t idata[][8], uint8_t* odata)//idate: receive;odate: t
 			need_curcircle = 0.f;
 			setspeed = -350.f;
 			current = setrange(static_cast<int32_t>(pid[speed].Position(
-				static_cast<float>(setspeed - curspeed), 8000)), 8000);
+				static_cast<float>(setspeed - curspeed), 10000)), 10000);
 		}
 		else {
 			const int32_t actual_angle = sum_angle +
@@ -216,6 +216,14 @@ void Motor::Ontimer(uint8_t idata[][8], uint8_t* odata)//idate: receive;odate: t
 	GetDistanceFromMechanicalAngle();
 	angle[pre] = angle[now];
 	current = setrange(current, maxcurrent);
+	// ===== BEGIN CODEX: halve supply current when the microswitch is closed =====
+	if (this == ctrl.supply_motor[0]) {
+		// PA8 high means closed. Scale the current command after PID and limiting.
+		if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_8) == GPIO_PIN_SET)
+			current /= 3;
+		setcurrent = current;
+	}
+	// ===== END CODEX: halve supply current when the microswitch is closed =====
 	odata[trainsmit_or_receive_ID * 2] = (current & 0xff00) >> 8;//¸ß°ËÎ»
 	odata[trainsmit_or_receive_ID * 2 + 1] = current & 0x00ff;
 }

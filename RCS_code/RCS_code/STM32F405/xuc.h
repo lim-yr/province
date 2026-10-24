@@ -94,6 +94,10 @@ public:
 
 	uint32_t count = 0, navi_count = 0, aim_count = 0;
 	TickType_t last_aim_tick = 0;
+	// ===== BEGIN CODEX: retain single-shot events across later zero commands =====
+	uint32_t single_fire_request_count = 0;
+	TickType_t single_fire_request_tick = 0;
+	// ===== END CODEX: retain single-shot events across later zero commands =====
 	void Init(UART* huart, USART_TypeDef* Instance, uint32_t BaudRate);
 	void Decode();
 	void Encode();

@@ -70,9 +70,11 @@ void RC::RC_CheckState() {
 		ctrl.mode = CONTROL::SEPARATE;
 		break;
 
+	// ===== BEGIN CODEX: both switches down selects climb; invalid states still stop =====
 	case RC_STATE(DOWN, DOWN):
-		ctrl.mode = CONTROL::STOP;
+		ctrl.mode = CONTROL::CLIMB;
 		break;
+	// ===== END CODEX: both switches down selects climb; invalid states still stop =====
 
 	default:
 		ctrl.mode = CONTROL::STOP;
@@ -118,6 +120,14 @@ void RC::RC_Control()//在此函数里面实现换算摇杆编码和底盘速度
 		}
 		
 	}
+	// ===== BEGIN CODEX: route live climb control and return to zero on exit =====
+	const bool climb_active = online && ctrl.mode == CONTROL::CLIMB;
+	if (climb_active) {
+		ctrl.chassis.speedx = CONTROL::Setrange(rc.ch[3], 660) * para.max_speed / 660;
+		ctrl.chassis.speedy = CONTROL::Setrange(rc.ch[2], 660) * para.max_speed / 660;
+	}
+	ctrl.Climb(climb_active);
+	// ===== END CODEX: route live climb control and return to zero on exit =====
 }
 
 void RC::Decode()

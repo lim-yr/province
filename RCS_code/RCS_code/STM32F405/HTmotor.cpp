@@ -42,7 +42,9 @@ void DMMOTOR::DMmotor_transmit()
 
 void DMMOTOR::DMmotorinit()
 {
-	setSpeed = 0.5f;
+	// ===== BEGIN CODEX: periodic enable must preserve the current climb speed =====
+	// The initial 2.5 rad/s limit is set once in HTmotor.h.
+	// ===== END CODEX: periodic enable must preserve the current climb speed =====
 	CanComm_ControlCmd(can1, CMD_MOTOR_MODE, ID);//发指令,哪条CAN总线，哪个电机ID
 	delay.delay_ms(1);
 }

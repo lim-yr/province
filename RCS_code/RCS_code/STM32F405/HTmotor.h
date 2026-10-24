@@ -56,7 +56,9 @@ public:
 
 	float angle[2]{}, setAngle{}, deltaAngle{};//认为是安装电机时，初始姿态的电机与连杆夹角；
 	float pos{}, setPos{};//转子位置，也是反馈回来的角度
-	float curSpeed, setSpeed;
+	// ===== BEGIN CODEX: initialize the remote branch DM speed once =====
+	float curSpeed{}, setSpeed{ 2.5f };
+	// ===== END CODEX: initialize the remote branch DM speed once =====
 	float current, setCurrent;
 	float torque, setTorque;
 	float Kp = 10.f;

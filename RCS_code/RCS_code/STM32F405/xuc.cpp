@@ -41,6 +41,12 @@ void XUC::Decode()//接收并拆解视觉数据
 		xuc.v_y = u8_to_float(m_frame + 25);
 		last_aim_tick = xTaskGetTickCount();
 		++aim_count;
+		// ===== BEGIN CODEX: publish each received single-shot event =====
+		if (command == 2) {
+			single_fire_request_tick = last_aim_tick;
+			++single_fire_request_count;
+		}
+		// ===== END CODEX: publish each received single-shot event =====
 
 	}
 }

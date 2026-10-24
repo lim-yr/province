@@ -171,10 +171,16 @@ void ArmTask(void* pvParameters)
 		//初始化达妙电机
 		for (auto& motor : DMmotor) motor.DMmotorinit();
 		while (++cnt == 2) {
-			for (auto& motor : DMmotor) { 
-				motor.homing = true; 
-				motor.homeDir = 1; 
+			// ===== BEGIN CODEX: startup homing must not override an active climb =====
+			taskENTER_CRITICAL();
+			if (ctrl.mode != CONTROL::CLIMB) {
+				for (auto& motor : DMmotor) {
+					motor.homing = true;
+					motor.homeDir = 1;
+				}
 			}
+			taskEXIT_CRITICAL();
+			// ===== END CODEX: startup homing must not override an active climb =====
 		}
 		power.Send();
 		vTaskDelay(100);

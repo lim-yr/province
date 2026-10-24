@@ -40,8 +40,13 @@
     <ToolchainVersion>10.3.1/10.2.90/r1</ToolchainVersion>
     <MCUPropertyListFile>$(ProjectDir)stm32.props</MCUPropertyListFile>
   </PropertyGroup>
+  <!-- BEGIN CODEX: explicitly locate the project HAL and FreeRTOS configuration headers -->
   <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory);%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
   </ItemDefinitionGroup>
+  <!-- END CODEX: explicitly locate the project HAL and FreeRTOS configuration headers -->
   <ItemGroup>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
