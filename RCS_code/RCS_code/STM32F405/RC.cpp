@@ -118,42 +118,28 @@ void RC::RC_Control()//在此函数里面实现换算摇杆编码和底盘速度
 		{
 			state = false;
 		}
-		if (online && ctrl.mode == CONTROL::STOP)
-		{
-			ctrl.chassis.speedx = 0;
-			ctrl.chassis.speedy = 0;
-			ctrl.chassis.speedz = 0;
-			ctrl.chassis.speedx = CONTROL::Setrange(rc.ch[3], 660) * para.max_speed / 660;
-			ctrl.chassis.speedy = CONTROL::Setrange(rc.ch[2], 660) * para.max_speed / 660;
-			ctrl.CONTROL::Climb(true);
-		}
-		else
-		{
-			ctrl.CONTROL::Climb(false);
-		}
-		if (online && ctrl.mode == CONTROL::DOWN)
-		{
-			ctrl.chassis.speedx = 0;
-			ctrl.chassis.speedy = 0;
-			ctrl.chassis.speedz = 0;
-			ctrl.chassis.speedx = CONTROL::Setrange(rc.ch[3], 660) * para.max_speed / 660;
-			ctrl.chassis.speedy = CONTROL::Setrange(rc.ch[2], 660) * para.max_speed / 660;
-			ctrl.CONTROL::Climb2(true);
-		}
-		else
-		{
-			ctrl.CONTROL::Climb2(false);
-		}
-		
 	}
-	// ===== BEGIN CODEX: route live climb control and return to zero on exit =====
-	//const bool climb_active = online && ctrl.mode == CONTROL::CLIMB;
-	//if (climb_active) {
-	//	ctrl.chassis.speedx = CONTROL::Setrange(rc.ch[3], 660) * para.max_speed / 660;
-	//	ctrl.chassis.speedy = CONTROL::Setrange(rc.ch[2], 660) * para.max_speed / 660;
-	//}
-	//ctrl.Climb(climb_active);
-	// ===== END CODEX: route live climb control and return to zero on exit =====
+
+	// ===== BEGIN CODEX: route both climb modes outside FIRE and switch poses atomically =====
+	const bool climb_active = online && ctrl.mode == CONTROL::CLIMB;
+	const bool climb2_active = online && ctrl.mode == CONTROL::DOWN;
+	if (climb_active || climb2_active) {
+		ctrl.chassis.speedx = CONTROL::Setrange(rc.ch[3], 660) * para.max_speed / 660;
+		ctrl.chassis.speedy = CONTROL::Setrange(rc.ch[2], 660) * para.max_speed / 660;
+	}
+
+	// Exit the previous pose before activating the next, so zero cannot overwrite it.
+	taskENTER_CRITICAL();
+	if (!climb_active)
+		ctrl.Climb(false);
+	if (!climb2_active)
+		ctrl.Climb2(false);
+	if (climb_active)
+		ctrl.Climb(true);
+	if (climb2_active)
+		ctrl.Climb2(true);
+	taskEXIT_CRITICAL();
+	// ===== END CODEX: route both climb modes outside FIRE and switch poses atomically =====
 }
 
 void RC::Decode()

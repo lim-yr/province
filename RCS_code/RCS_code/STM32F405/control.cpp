@@ -419,6 +419,7 @@ void CONTROL::SHOOTER::Update()
 		fire_switch_high_seen = true;
 		fire_switch_first_high_tick = now;
 	}
+	ctrl.debug = fire_switch_high;
 	// A low input blocks output without restarting the first-high timer.
 	const bool fire_switch_permitted = fire_switch_high && fire_switch_high_seen &&
 		(now - fire_switch_first_high_tick >= fire_switch_delay_ticks);

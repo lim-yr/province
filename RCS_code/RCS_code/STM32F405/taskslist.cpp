@@ -173,7 +173,7 @@ void ArmTask(void* pvParameters)
 		while (++cnt == 2) {
 			// ===== BEGIN CODEX: startup homing must not override an active climb =====
 			taskENTER_CRITICAL();
-			if (ctrl.mode != CONTROL::CLIMB) {
+			if (ctrl.mode != CONTROL::CLIMB && ctrl.mode != CONTROL::DOWN) {
 				for (auto& motor : DMmotor) {
 					motor.homing = true;
 					motor.homeDir = 1;

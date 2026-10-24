@@ -40,7 +40,7 @@ Motor can2_motor[CAN2_MOTOR_NUM] = {
 	Motor(M3508,SPD,shooter, ID1, PID(40.f, 0.0f, 1.5f)),
 	Motor(M3508,SPD,shooter, ID2, PID(40.f, 0.0f, 1.5f)),
 	Motor(M3508,SPD,shooter, ID3, PID(40.f, 0.0f, 1.5f)),
-	Motor(M3508,ACE,supply , ID5, PID(20.0f, 0.0f, 0.0f),PID(0.5f, 0.0f, 0.0f))
+	Motor(M3508,ACE,supply , ID5, PID(50.0f, 0.0f, 0.0f),PID(0.5f, 0.0f, 0.0f))
 };   
 DMMOTOR DMmotor[4] = {
 	DMMOTOR(0x01, P_S, L_F),
@@ -76,7 +76,9 @@ int main(void)
 	can2.Init(CAN2);
 	timer.Init(BASE, TIM3, 1000).BaseInit();
 
+	// ===== BEGIN CODEX: IMU communication uses UART5 at 115200 baud =====
 	imu_pantile.Init(&uart5, UART5, 115200, CH010);
+	// ===== END CODEX: IMU communication uses UART5 at 115200 baud =====
 	rc.Init(&uart4, UART4, 100000);
 	power.Init(&uart2,USART2,9600);
 	xuc.Init(&uart3, USART3, 460800);

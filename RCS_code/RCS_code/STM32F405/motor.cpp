@@ -105,7 +105,7 @@ void Motor::Ontimer(uint8_t idata[][8], uint8_t* odata)//idate: receive;odate: t
 			need_curcircle = 0.f;
 			setspeed = -350.f;
 			current = setrange(static_cast<int32_t>(pid[speed].Position(
-				static_cast<float>(setspeed - curspeed), 10000)), 10000);
+				static_cast<float>(setspeed - curspeed), 14000)), 14000);
 		}
 		else {
 			const int32_t actual_angle = sum_angle +

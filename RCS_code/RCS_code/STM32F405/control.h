@@ -13,7 +13,7 @@ public:
 	Motor* pantile_motor[PANTILE_MOTOR_NUM]{};
 	Motor* shooter_motor[SHOOTER_MOTOR_NUM]{};
 	Motor* supply_motor[SUPPLY_MOTOR_NUM]{};
-	
+	int8_t debug = 0;
 	// ===== BEGIN CODEX: append an explicit climb mode, keeping existing mode values =====
 	enum MODE { PC, RC, AUTOAIM, RESET, ROTATION, SPINNING, FOLLOW, SEPARATE, FIRE, STOP, LOCK, CLIMB, DOWN } mode;
 	// ===== END CODEX: append an explicit climb mode, keeping existing mode values =====
