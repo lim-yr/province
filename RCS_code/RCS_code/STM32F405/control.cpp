@@ -262,6 +262,126 @@ void CONTROL::PANTILE::Update()
 		yaw->setangle += 8192.0f;
 }
 
+//void CONTROL::Climb(bool stopActive)
+//{
+//
+//	static bool wasStop = false;
+//
+//	if (stopActive && !wasStop)
+//	{
+//		// 取消回零过程，避免覆盖目标位置
+//		DMmotor[0].homing = false;
+//		DMmotor[1].homing = false;
+//		DMmotor[2].homing = false;
+//		DMmotor[3].homing = false;
+//
+//		// 以当前反馈位置为起点，转动 1 rad
+//		DMmotor[0].setPos = 6.0f;
+//		DMmotor[1].setPos = -6.0f;
+//		DMmotor[2].setPos = 9.0f;
+//		DMmotor[3].setPos = -9.0f;
+//
+//		// 速度限制，单位 rad/s
+//		DMmotor[0].setSpeed = 2.5f;
+//		DMmotor[1].setSpeed = 2.5f;
+//		DMmotor[2].setSpeed = 2.5f;
+//		DMmotor[3].setSpeed = 2.5f;
+//
+//		// 限制目标位置范围
+//		if (DMmotor[0].setPos > P_MAX)
+//			DMmotor[0].setPos = P_MAX;
+//		if (DMmotor[0].setPos < P_MIN)
+//			DMmotor[0].setPos = P_MIN;
+//
+//		if (DMmotor[1].setPos > P_MAX)
+//			DMmotor[1].setPos = P_MAX;
+//		if (DMmotor[1].setPos < P_MIN)
+//			DMmotor[1].setPos = P_MIN;
+//
+//		if (DMmotor[2].setPos > P_MAX)
+//			DMmotor[2].setPos = P_MAX;
+//		if (DMmotor[2].setPos < P_MIN)
+//			DMmotor[2].setPos = P_MIN;
+//
+//		if (DMmotor[3].setPos > P_MAX)
+//			DMmotor[3].setPos = P_MAX;
+//		if (DMmotor[3].setPos < P_MIN)
+//			DMmotor[3].setPos = P_MIN;
+//	}
+//
+//	else if (!stopActive && wasStop)
+//	{
+//		// 刚退出 STOP：触发一次回零
+//		DMmotor[0].setPos = 0.0f;
+//		DMmotor[1].setPos = 0.0f;
+//		DMmotor[2].setPos = 0.0f;
+//		DMmotor[3].setPos = 0.0f;
+//	}
+//
+//	wasStop = stopActive;
+//
+//}
+//
+//void CONTROL::Climb2(bool stopActive)
+//{
+//
+//	static bool wasStop1 = false;
+//
+//	if (stopActive && !wasStop1)
+//	{
+//		// 取消回零过程，避免覆盖目标位置
+//		DMmotor[0].homing = false;
+//		DMmotor[1].homing = false;
+//		DMmotor[2].homing = false;
+//		DMmotor[3].homing = false;
+//
+//		// 以当前反馈位置为起点，转动 1 rad
+//		DMmotor[2].setPos = 6.0f;
+//		DMmotor[3].setPos = -6.0f;
+//		DMmotor[0].setPos = 9.0f;
+//		DMmotor[1].setPos = -9.0f;
+//
+//		// 速度限制，单位 rad/s
+//		DMmotor[0].setSpeed = 2.5f;
+//		DMmotor[1].setSpeed = 2.5f;
+//		DMmotor[2].setSpeed = 2.5f;
+//		DMmotor[3].setSpeed = 2.5f;
+//
+//		// 限制目标位置范围
+//		if (DMmotor[0].setPos > P_MAX)
+//			DMmotor[0].setPos = P_MAX;
+//		if (DMmotor[0].setPos < P_MIN)
+//			DMmotor[0].setPos = P_MIN;
+//
+//		if (DMmotor[1].setPos > P_MAX)
+//			DMmotor[1].setPos = P_MAX;
+//		if (DMmotor[1].setPos < P_MIN)
+//			DMmotor[1].setPos = P_MIN;
+//
+//		if (DMmotor[2].setPos > P_MAX)
+//			DMmotor[2].setPos = P_MAX;
+//		if (DMmotor[2].setPos < P_MIN)
+//			DMmotor[2].setPos = P_MIN;
+//
+//		if (DMmotor[3].setPos > P_MAX)
+//			DMmotor[3].setPos = P_MAX;
+//		if (DMmotor[3].setPos < P_MIN)
+//			DMmotor[3].setPos = P_MIN;
+//	}
+//
+//	else if (!stopActive && wasStop1)
+//	{
+//		// 刚退出 STOP：触发一次回零
+//		DMmotor[0].setPos = 0.0f;
+//		DMmotor[1].setPos = 0.0f;
+//		DMmotor[2].setPos = 0.0f;
+//		DMmotor[3].setPos = 0.0f;
+//	}
+//
+//	wasStop1 = stopActive;
+//
+//}
+
 void CONTROL::SHOOTER::Update()
 {
 	ctrl.shooter.openRub = (ctrl.mode == CONTROL::FIRE)||(ctrl.mode == CONTROL::AUTOAIM);
@@ -402,7 +522,7 @@ void CONTROL::SHOOTER::Update()
 	}
 }
 
-// ===== BEGIN CODEX: integrate climb posture from remote stair branch commit 2702032 =====
+//// ===== BEGIN CODEX: integrate climb posture from remote stair branch commit 2702032 =====
 void CONTROL::Climb(bool active)
 {
 	static bool was_active = false;
@@ -411,7 +531,31 @@ void CONTROL::Climb(bool active)
 
 	// Absolute motor positions in radians, ordered by CAN1 IDs 1, 2, 3, 4.
 	constexpr float climb_targets[4] = { 6.0f, -6.0f, 9.0f, -9.0f };
-	constexpr float climb_speed = 1.5f;
+	constexpr float climb_speed = 1.7f;
+
+	taskENTER_CRITICAL();
+	for (int i = 0; i < 4; ++i) {
+		DMMOTOR& motor = DMmotor[i];
+		// Cancel startup homing so it cannot overwrite the climb or return target.
+		motor.homing = false;
+		motor.setPos = active ? climb_targets[i] : 0.0f;
+		motor.setPos = std::max(static_cast<float>(P_MIN),
+			std::min(static_cast<float>(P_MAX), motor.setPos));
+		motor.setSpeed = climb_speed;
+	}
+	was_active = active;
+	taskEXIT_CRITICAL();
+}
+
+void CONTROL::Climb2(bool active)
+{
+	static bool was_active = false;
+	if (active == was_active)
+		return;
+
+	// Absolute motor positions in radians, ordered by CAN1 IDs 1, 2, 3, 4.
+	constexpr float climb_targets[4] = { 9.0f, -9.0f, 6.0f, -6.0f };
+	constexpr float climb_speed = 1.7f;
 
 	taskENTER_CRITICAL();
 	for (int i = 0; i < 4; ++i) {

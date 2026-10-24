@@ -15,7 +15,7 @@ public:
 	Motor* supply_motor[SUPPLY_MOTOR_NUM]{};
 	
 	// ===== BEGIN CODEX: append an explicit climb mode, keeping existing mode values =====
-	enum MODE { PC, RC, AUTOAIM, RESET, ROTATION, SPINNING, FOLLOW, SEPARATE, FIRE, STOP, LOCK, CLIMB } mode;
+	enum MODE { PC, RC, AUTOAIM, RESET, ROTATION, SPINNING, FOLLOW, SEPARATE, FIRE, STOP, LOCK, CLIMB, DOWN } mode;
 	// ===== END CODEX: append an explicit climb mode, keeping existing mode values =====
 	struct CHASSIS
 	{
@@ -67,7 +67,8 @@ public:
 	void Init(std::vector<Motor*> motor);
 	void init_dm();
 	// ===== BEGIN CODEX: climb transition entry point =====
-	void Climb(bool active);
+	void Climb(bool stopActive);
+	void Climb2(bool stopActive);
 	// ===== END CODEX: climb transition entry point =====
 private:
 
